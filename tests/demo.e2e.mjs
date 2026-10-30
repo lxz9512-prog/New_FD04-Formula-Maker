@@ -12,7 +12,7 @@ await page.route('https://**/*', (route) => route.abort());
 const url = process.env.DEMO_URL || 'http://127.0.0.1:4174/';
 fs.mkdirSync('test-results', { recursive: true });
 const consoleUI = page.getByRole('complementary', { name: '场景控制台' });
-const dialog = page.getByTestId('operation-overlay').getByRole('dialog');
+const dialog = page.getByTestId('operation-status');
 const phone = page.locator('[data-device-screen]');
 const passes = [];
 async function check(name, fn) {
@@ -66,6 +66,7 @@ async function storage(key) {
   );
 }
 async function failVisible(name) {
+  await consoleOpen();
   await dialog.getByRole('heading', { name, exact: true }).waitFor();
 }
 async function dismiss() {
@@ -82,16 +83,70 @@ try {
     assert.equal(await dialog.count(), 0);
   });
   await check(
+    'left console sits between directory and phone; original right descriptions restored; no injected product dialogs',
+    async () => {
+      const directory = await page.locator('.scene-directory').boundingBox();
+      const control = await consoleUI.boundingBox();
+      const device = await page.locator('[data-device-frame]').boundingBox();
+      const info = await page
+        .getByRole('complementary', { name: '交互说明', exact: true })
+        .boundingBox();
+      assert.ok(directory.x + directory.width <= control.x);
+      assert.ok(control.x + control.width <= device.x);
+      assert.ok(device.x + device.width <= info.x);
+      for (const width of [1200, 1280, 1512]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await page.waitForTimeout(400);
+        const right = await page
+          .getByRole('complementary', { name: '交互说明', exact: true })
+          .boundingBox();
+        const frame = await page.locator('[data-device-frame]').boundingBox();
+        assert.ok(
+          right.x + right.width <= width + 1,
+          `right panel fits ${width}`,
+        );
+        assert.ok(frame.x + frame.width <= right.x, `phone fits ${width}`);
+      }
+      await select('devices.failure', { mode: 'preview' });
+      await failVisible('设备列表加载失败');
+      assert.equal(await phone.getByRole('dialog').count(), 0);
+      assert.equal(
+        await phone.locator('[data-testid="operation-status"]').count(),
+        0,
+      );
+      assert.equal(await page.locator('.mock-operation-overlay').count(), 0);
+      await consoleUI
+        .getByRole('button', { name: '恢复正常', exact: true })
+        .click();
+      await phone.getByRole('button', { name: '重新加载设备' }).click();
+      await phone.getByText('FD04', { exact: true }).waitFor();
+      await consoleUI.getByRole('button', { name: '收起控制台' }).click();
+      await consoleUI.getByRole('button', { name: '展开控制台' }).waitFor();
+      await consoleUI.getByRole('button', { name: '展开控制台' }).click();
+    },
+  );
+  await check(
     'one-shot failure waits and remains active while console hidden; retry recovers',
     async () => {
       await select('devices.failure');
       await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
       await phone.getByRole('button', { name: '重新加载设备' }).click();
+      await consoleOpen();
       await dialog.getByRole('progressbar').waitFor();
       assert.equal(
         await phone.getByText('FD04', { exact: true }).isVisible(),
         false,
       );
+      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
+      await phone.getByRole('button', { name: '重新加载设备' }).focus();
+      await page.waitForTimeout(1550);
+      assert.equal(await consoleUI.isVisible(), false);
+      assert.ok(
+        await phone
+          .getByRole('button', { name: '重新加载设备' })
+          .evaluate((el) => el === document.activeElement),
+      );
+      assert.equal(await phone.getByRole('dialog').count(), 0);
       await failVisible('设备列表加载失败');
       await consoleOpen();
       assert.ok(
@@ -509,13 +564,23 @@ try {
       await page.reload();
       await page.waitForTimeout(1500);
       assert.equal(await consoleUI.isVisible(), false);
+      await page.getByRole('button', { name: '打开或收起交互说明' }).click();
+      await page
+        .getByRole('complementary', { name: '交互说明', exact: true })
+        .getByRole('heading', { name: '交互说明' })
+        .waitFor();
+      await page.getByRole('button', { name: '打开或收起交互说明' }).click();
+      await page.waitForTimeout(350);
       await consoleOpen();
       await select('devices.empty');
       await page.screenshot({ path: 'test-results/mobile-drawer.png' });
       await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
       await phone.getByRole('button', { name: '重新加载设备' }).click();
       await failVisible('没有可用设备');
+      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
+      assert.equal(await phone.getByRole('dialog').count(), 0);
       await page.screenshot({ path: 'test-results/mobile-error.png' });
+      await consoleOpen();
       await dialog.getByRole('button', { name: '重新查找' }).click();
       await dialog.waitFor({ state: 'hidden' });
     },

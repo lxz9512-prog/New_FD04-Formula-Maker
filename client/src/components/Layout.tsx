@@ -584,17 +584,36 @@ const Layout = () => {
     }
     const timer = setTimeout(calculateSvgLines, 350);
     return () => clearTimeout(timer);
-  }, [isInfoPanelOpen, openSections, isDevicePage, showInteractionLines]);
+  }, [
+    isInfoPanelOpen,
+    openSections,
+    isDevicePage,
+    showInteractionLines,
+    isSidebarOpen,
+  ]);
 
   useEffect(() => {
     const handleResize = () => calculateSvgLines();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  });
+    const observer = new ResizeObserver(handleResize);
+    const product = document.querySelector('.scene-product-content');
+    if (product) observer.observe(product);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
+    };
+  }, [
+    isInfoPanelOpen,
+    isDevicePage,
+    showInteractionLines,
+    openSections,
+    location.pathname,
+  ]);
 
   return (
-    <div className="relative flex min-h-screen bg-gradient-to-b from-[hsl(39_50%_95%)] to-[hsl(39_30%_97%)]">
-      <ScenarioConsole />
+    <div
+      className={`demo-workspace ${isSidebarOpen ? 'has-directory' : ''} ${isInfoPanelOpen ? 'has-info' : ''} relative flex min-h-screen bg-gradient-to-b from-[hsl(39_50%_95%)] to-[hsl(39_30%_97%)]`}
+    >
       {/* Left Sidebar Toggle */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -614,7 +633,7 @@ const Layout = () => {
 
       {/* Left Sidebar */}
       <div
-        className={`fixed left-0 top-0 z-40 h-full bg-white transition-all duration-300 ${
+        className={`scene-directory fixed left-0 top-0 z-40 h-full bg-white transition-all duration-300 ${
           isSidebarOpen ? 'w-full sm:w-64' : 'w-0'
         }`}
         style={{
@@ -682,6 +701,8 @@ const Layout = () => {
         </div>
       </div>
 
+      <ScenarioConsole />
+
       {/* Main Content */}
       <div
         className={[
@@ -690,11 +711,14 @@ const Layout = () => {
           '',
         ].join(' ')}
       >
-        <DemoBoundary><Outlet /></DemoBoundary>
+        <DemoBoundary>
+          <Outlet />
+        </DemoBoundary>
       </div>
 
       {/* Right Panel Toggle */}
       <button
+        aria-label="打开或收起交互说明"
         onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)}
         className="scene-old-info-toggle absolute right-2 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg transition-all hover:scale-110"
         style={{
@@ -710,7 +734,8 @@ const Layout = () => {
       </button>
 
       {/* Right Info Panel */}
-      <div
+      <aside
+        aria-label="交互说明"
         className={`scene-old-info fixed right-0 top-0 z-40 h-full bg-white transition-all duration-300 ${
           isInfoPanelOpen ? 'w-full sm:w-[420px] xl:w-[550px]' : 'w-0'
         }`}
@@ -738,7 +763,7 @@ const Layout = () => {
             ))}
           </nav>
         </div>
-      </div>
+      </aside>
 
       {/* SVG Connector Overlay */}
       {isInfoPanelOpen && isDevicePage && showInteractionLines && (

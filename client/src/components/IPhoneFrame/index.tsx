@@ -1,4 +1,4 @@
-import { OperationOverlay, resetDemo } from '@/demo/react';
+import { resetDemo } from '@/demo/react';
 import { demoLocal } from '@/demo/storage';
 import React, { type ReactNode, useState } from 'react';
 import { useTranslation } from '@client/src/hooks/useTranslation';
@@ -30,11 +30,13 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
   };
 
   return (
-    <div data-device-frame className="relative isolate mx-auto" style={{ width: 393, height: 852 }}>
+    <div
+      data-device-frame
+      className="relative isolate mx-auto"
+      style={{ width: 393, height: 852 }}
+    >
       {/* Global demo controls */}
-      <div
-        className="absolute left-[calc(100%+2px)] top-6 z-30 w-[60px] rounded-[12px] border border-black/5 bg-white/80 p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.07)] backdrop-blur-sm"
-      >
+      <div className="absolute left-[calc(100%+2px)] top-6 z-30 w-[60px] rounded-[12px] border border-black/5 bg-white/80 p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.07)] backdrop-blur-sm">
         <div className="grid grid-cols-2 rounded-[8px] bg-black/[0.05] p-0.5">
           {(['zh', 'en'] as const).map((lang) => (
             <button
@@ -97,7 +99,9 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
           <button
             type="button"
             role="switch"
-            aria-label={language === 'zh' ? '显示连接线' : 'Show connector lines'}
+            aria-label={
+              language === 'zh' ? '显示连接线' : 'Show connector lines'
+            }
             aria-checked={showInteractionLines}
             onClick={toggleInteractionLines}
             title={language === 'zh' ? '显示连接线' : 'Show connector lines'}
@@ -183,7 +187,8 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
 
       {/* Screen area */}
       <div
-        data-device-screen className="absolute overflow-hidden rounded-[46px]"
+        data-device-screen
+        className="absolute overflow-hidden rounded-[46px]"
         style={{
           inset: 8,
           background,
@@ -277,7 +282,6 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
 
         {/* Overlay layer - rendered at screen level, above content, not clipped by overflow */}
         {overlay}
-        <OperationOverlay />
 
         {/* Home indicator */}
         <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2">
