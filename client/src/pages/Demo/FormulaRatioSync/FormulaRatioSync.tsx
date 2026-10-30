@@ -1,3 +1,7 @@
+// @ts-expect-error Existing published navigation helper is a JS module.
+import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
+import { useLocation } from 'react-router-dom';
+import { useOperation } from '@/demo/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, BellRing, Check, X } from 'lucide-react';
@@ -23,14 +27,16 @@ const SPRING = { type: 'spring' as const, stiffness: 320, damping: 30 };
 
 const FormulaRatioSync: React.FC = () => {
   const navigate = useNavigate();
+  const editorLocation = useLocation();
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
 
   const [profiles, setProfiles] =
     useState<FormulaProfileListItem[]>(readFormulaProfiles);
-  const [selectedId, setSelectedId] = useState<string>(readSelectedFormulaId);
-  const [alertOpen, setAlertOpen] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const restore = React.useRef(ratioSyncScreenState(editorLocation.state)).current;
+  const [selectedId, setSelectedId] = useState<string>(() => restore.selectedId ?? readSelectedFormulaId());
+  const [alertOpen, setAlertOpen] = useState(!restore.drawerOpen);
+  const [drawerOpen, setDrawerOpen] = useState(restore.drawerOpen);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -51,7 +57,9 @@ const FormulaRatioSync: React.FC = () => {
     setSelectedId(readSelectedFormulaId());
   };
 
-  const syncTo = (id: string) => {
+  const syncTarget = React.useRef<string | null>(null);
+  const syncOperation = useOperation({ operation: 'sync.apply', stage: 'sync', label: '同步设备配比', success: () => {
+    const id = syncTarget.current ?? selectedId;
     const target = profiles.find((profile) => profile.id === id);
     if (!target) return;
 
@@ -73,7 +81,9 @@ const FormulaRatioSync: React.FC = () => {
         ? t('demo.formulaRatioSync.syncedCurrent')
         : t('demo.formulaRatioSync.syncedOther', { brand: target.brand }),
     );
-  };
+  } });
+
+  const syncTo = (id: string) => { syncTarget.current = id; syncOperation(); };
 
   const openDrawer = () => {
     setAlertOpen(false);
@@ -93,7 +103,7 @@ const FormulaRatioSync: React.FC = () => {
   };
 
   return (
-    <div className="relative w-[393px] shrink-0" style={{ height: 852 }}>
+    <div className="scene-sync relative w-[393px] shrink-0" style={{ height: 852 }}>
       {/* 背景：设备控制页 */}
       <BabyFormulaMaker />
 
@@ -115,7 +125,7 @@ const FormulaRatioSync: React.FC = () => {
 
       {/* 屏幕内的弹窗 / 抽屉 / Toast 层（与控制页屏幕区域完全对齐） */}
       <div
-        className="pointer-events-none absolute overflow-hidden rounded-[46px]"
+        className="scene-sync-overlays pointer-events-none absolute overflow-hidden rounded-[46px]"
         style={{ left: 8, top: 8, width: 377, height: 836, zIndex: 40 }}
       >
         <AnimatePresence>
@@ -367,7 +377,7 @@ const FormulaRatioSync: React.FC = () => {
                 >
                   <button
                     type="button"
-                    onClick={() => navigate('/formula-edit?mode=manual')}
+                    onClick={() => openFormulaEditor(navigate, editorLocation, '/formula-edit?mode=manual', { formulaRatioSync: { drawerOpen: true, selectedId } })}
                     className="h-[46px] flex-1 rounded-[15px] text-[15px] font-semibold"
                     style={{ background: '#F5F1ED', color: '#8B4A1B' }}
                   >

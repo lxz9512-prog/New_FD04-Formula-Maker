@@ -1,3 +1,5 @@
+import { OperationOverlay, resetDemo } from '@/demo/react';
+import { demoLocal } from '@/demo/storage';
 import React, { type ReactNode, useState } from 'react';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 import { Cable, RotateCcw } from 'lucide-react';
@@ -17,18 +19,18 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
   const { language, setLanguage } = useTranslation();
   const { unit, setUnit } = useVolumeUnit();
   const [showInteractionLines, setShowInteractionLines] = useState(
-    () => localStorage.getItem('show_interaction_lines') !== 'false',
+    () => demoLocal.getItem('show_interaction_lines') !== 'false',
   );
 
   const toggleInteractionLines = () => {
     const nextValue = !showInteractionLines;
     setShowInteractionLines(nextValue);
-    localStorage.setItem('show_interaction_lines', String(nextValue));
+    demoLocal.setItem('show_interaction_lines', String(nextValue));
     window.dispatchEvent(new Event('interactionLinesVisibilityChange'));
   };
 
   return (
-    <div className="relative isolate mx-auto" style={{ width: 393, height: 852 }}>
+    <div data-device-frame className="relative isolate mx-auto" style={{ width: 393, height: 852 }}>
       {/* Global demo controls */}
       <div
         className="absolute left-[calc(100%+2px)] top-6 z-30 w-[60px] rounded-[12px] border border-black/5 bg-white/80 p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.07)] backdrop-blur-sm"
@@ -83,10 +85,7 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
           aria-label="Reset"
           title="Reset"
           onClick={() => {
-            localStorage.setItem('mixing_chamber_count', '0');
-            localStorage.removeItem('formula_profile_configured');
-            localStorage.removeItem('formula_profile');
-            window.dispatchEvent(new Event('resetMixingChamber'));
+            resetDemo();
           }}
           className="mt-1.5 flex h-7 w-full items-center justify-center rounded-[8px] bg-black/[0.035] text-[#8A8380] transition-colors hover:bg-black/[0.06]"
         >
@@ -184,7 +183,7 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
 
       {/* Screen area */}
       <div
-        className="absolute overflow-hidden rounded-[46px]"
+        data-device-screen className="absolute overflow-hidden rounded-[46px]"
         style={{
           inset: 8,
           background,
@@ -278,6 +277,7 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
 
         {/* Overlay layer - rendered at screen level, above content, not clipped by overflow */}
         {overlay}
+        <OperationOverlay />
 
         {/* Home indicator */}
         <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2">

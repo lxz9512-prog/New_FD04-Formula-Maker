@@ -1,10 +1,10 @@
+import { useOperation } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Image, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import IPhoneFrame from '@client/src/components/IPhoneFrame';
-import { logger } from '@lark-apaas/client-toolkit/logger';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 
 const CAMERA_VIEWFINDER_IMAGE =
@@ -21,42 +21,13 @@ const CaptureFormula: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    if (isUploading && uploadProgress < 100) {
-      const timer = setTimeout(() => {
-        setUploadProgress((prev) => {
-          const next = prev + Math.floor(Math.random() * 15) + 5;
-          return next >= 100 ? 100 : next;
-        });
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-    if (uploadProgress === 100) {
-      const timer = setTimeout(() => {
-        setIsUploading(false);
-        setShowSuccess(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isUploading, uploadProgress]);
+  const captureOperation = useOperation({
+    operation: 'capture.front', stage: 'capture', label: '上传正面照片', delay: 1500,
+    success: () => navigate('/capture-formula-back-side' + firstUseSuffix),
+    edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')),
+  });
+  const handleCapture = () => {  captureOperation(); };
 
-  useEffect(() => {
-    if (showSuccess) {
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-        setUploadProgress(0);
-        navigate('/capture-formula-back-side' + firstUseSuffix);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccess, navigate, firstUseSuffix]);
-
-  const handleCapture = () => {
-    logger.info('Capture clicked');
-    setIsUploading(true);
-    setUploadProgress(0);
-    setShowSuccess(false);
-  };
 
   return (
     <IPhoneFrame background="#ffffff">
@@ -259,6 +230,7 @@ const CaptureFormula: React.FC = () => {
 
             <motion.button
               whileTap={{ scale: 0.9 }}
+              aria-label="拍摄照片"
               onClick={handleCapture}
               className="flex h-[64px] w-[64px] items-center justify-center rounded-full"
               style={{

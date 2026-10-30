@@ -1,0 +1,181 @@
+/* Explicit CSS keeps the extension compatible with both existing stylesheet builds. */
+.baby-missing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(34, 17, 34, 0.38);
+}
+.baby-missing-dialog {
+  width: 100%;
+  padding: 26px 20px 18px;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 20px 52px rgba(34, 17, 34, 0.22);
+  text-align: center;
+  color: #221122;
+}
+.baby-profile-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #f7eee6;
+  color: #8b4a1b;
+}
+.baby-profile-icon svg {
+  width: 44px;
+  height: 44px;
+}
+.baby-missing-dialog h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.baby-missing-dialog p {
+  margin: 12px 0 24px;
+  color: #7a7377;
+  font-size: 14px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.baby-primary,
+.baby-secondary {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.baby-primary {
+  background: #8b4a1b;
+  color: #fff;
+}
+.baby-secondary {
+  margin-top: 9px;
+  background: #f5f1ed;
+  color: #6b6360;
+}
+.baby-primary:active,
+.baby-secondary:active {
+  transform: scale(0.98);
+}
+.baby-primary:focus-visible,
+.baby-secondary:focus-visible,
+.baby-add-page input:focus-visible,
+.baby-add-page select:focus-visible {
+  outline: 2px solid #8b4a1b;
+  outline-offset: 3px;
+}
+.baby-add-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #221122;
+}
+.baby-add-page h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.baby-add-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px 28px;
+}
+.baby-add-intro {
+  text-align: center;
+  padding: 10px 0 24px;
+}
+.baby-add-avatar {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: #f3e7d9;
+  color: #8b4a1b;
+  font-size: 40px;
+}
+.baby-add-intro h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.baby-add-intro p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #8a8380;
+}
+.baby-fields {
+  padding: 5px 18px 20px;
+  border-radius: 18px;
+  background: #fff;
+}
+.baby-fields label {
+  display: block;
+  margin: 18px 0 9px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.baby-fields label span {
+  color: #8b4a1b;
+}
+.baby-fields input,
+.baby-fields select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #e9e3df;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fcfbfa;
+  color: #221122;
+  font: inherit;
+  font-size: 14px;
+}
+.baby-fields input::placeholder {
+  color: #aaa29d;
+}
+.baby-local-note {
+  margin: 16px 0 24px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a8380;
+  text-align: center;
+}
+.baby-form-error {
+  margin: 12px 0 0;
+  color: #ab321c;
+  font-size: 13px;
+}
+.baby-save {
+  flex-shrink: 0;
+  margin-top: auto;
+  border-radius: 26px;
+  min-height: 52px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .baby-primary:active,
+  .baby-secondary:active {
+    transform: none;
+  }
+}

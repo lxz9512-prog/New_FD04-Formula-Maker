@@ -1,3 +1,5 @@
+import { demoLocal } from '@/demo/storage';
+import { useLoadOperation } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useMemo } from "react";
 import './feeding-stats.css';
@@ -165,6 +167,14 @@ const MOCK_RECORDS: FeedRecord[] = [
 
 const FeedingStats: React.FC = () => {
   const navigate = useNavigate();
+  const { loaded, reload } = useLoadOperation('feeding.load', 'feeding');
+  const [recordRevision, refreshRecords] = React.useReducer(n => n + 1, 0);
+  React.useEffect(() => { window.addEventListener('feedingRecordsChanged', refreshRecords); return () => window.removeEventListener('feedingRecordsChanged', refreshRecords); }, []);
+  let savedRecords: FeedRecord[] = [];
+  try { savedRecords = JSON.parse(demoLocal.getItem('feeding_records') || '[]'); } catch {}
+  let deviceRecords: FeedRecord[] = [];
+  try { deviceRecords = JSON.parse(demoLocal.getItem('feeding_history') || '[]').map((record: { ml: number; time: string }, index: number) => ({ id: `device-${index}`, type: '奶粉', amount: record.ml, time: dayjs(record.time).format('MM/DD HH:mm'), feeder: '调奶器' })); } catch {}
+  const allRecords = [...savedRecords, ...deviceRecords, ...MOCK_RECORDS];
   const { t, language } = useTranslation();
   const zh = language === 'zh';
   const { unit } = useVolumeUnit();
@@ -180,7 +190,7 @@ const FeedingStats: React.FC = () => {
     { value: '瓶喂', label: zh ? '瓶喂' : 'Bottle Feeding' },
     { value: '奶粉', label: zh ? '奶粉喂' : 'Formula Feeding' },
   ] as const;
-  const filteredRecords = feedingType === 'all' ? MOCK_RECORDS : MOCK_RECORDS.filter(record => record.type === feedingType);
+  const filteredRecords = feedingType === 'all' ? allRecords : allRecords.filter(record => record.type === feedingType);
   const isBreastfeeding = feedingType === '亲喂';
   const selectedTotal = filteredRecords.reduce((total, record) => total + (isBreastfeeding ? record.durationMinutes || 0 : record.amount || 0), 0);
 
@@ -261,7 +271,7 @@ const FeedingStats: React.FC = () => {
   };
 
   return (
-    <IPhoneFrame background="#FFFFFF">
+    <IPhoneFrame background="#FFFFFF"><div className="h-full flex flex-col"><button className="mock-list-reload" onClick={reload}>重新加载记录</button><div className="min-h-0 flex-1" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
       <div className="feeding-stats-page">
         <header className="fd06-page-nav">
           <motion.button
@@ -324,8 +334,8 @@ const FeedingStats: React.FC = () => {
           <section className="feeding-outline-card feeding-overall">
             <h2>{zh ? '概览' : 'Overall'}</h2>
             <div className="feeding-overall-grid">
-              <div><p>{feedingType === 'all' ? (zh ? '今日总量' : 'Today Total') : isBreastfeeding ? (zh ? '总时长' : 'Total Duration') : (zh ? '总喂养量' : 'Total Volume')}</p><strong>{feedingType === 'all' ? (unit === 'ml' ? TODAY_TOTAL : roundVolume(TODAY_TOTAL / ML_PER_OZ)) : isBreastfeeding || unit === 'ml' ? selectedTotal : roundVolume(selectedTotal / ML_PER_OZ)} <small>{isBreastfeeding ? (zh ? '分钟' : 'min') : unit}</small></strong></div>
-              <div><p>{zh ? '喂养次数' : 'Feeding Times'}</p><strong>{feedingType === 'all' ? TODAY_COUNT : filteredRecords.length}</strong></div>
+              <div><p>{feedingType === 'all' ? (zh ? '今日总量' : 'Today Total') : isBreastfeeding ? (zh ? '总时长' : 'Total Duration') : (zh ? '总喂养量' : 'Total Volume')}</p><strong>{feedingType === 'all' ? (unit === 'ml' ? (TODAY_TOTAL + savedRecords.reduce((sum, r) => sum + (r.amount || 0), 0)) : roundVolume((TODAY_TOTAL + savedRecords.reduce((sum, r) => sum + (r.amount || 0), 0)) / ML_PER_OZ)) : isBreastfeeding || unit === 'ml' ? selectedTotal : roundVolume(selectedTotal / ML_PER_OZ)} <small>{isBreastfeeding ? (zh ? '分钟' : 'min') : unit}</small></strong></div>
+              <div><p>{zh ? '喂养次数' : 'Feeding Times'}</p><strong>{feedingType === 'all' ? TODAY_COUNT + savedRecords.length : filteredRecords.length}</strong></div>
             </div>
           </section>
 
@@ -347,7 +357,7 @@ const FeedingStats: React.FC = () => {
               <article key={record.id} className="feeding-record">
                 <h3>{record.time}</h3>
                 <div className="feeding-record-line"><span>{zh ? '类型' : 'Type'}</span><i aria-hidden="true" /><span>{feedTypeLabels[record.type]}</span></div>
-                <div className="feeding-record-line"><span>{record.type === '亲喂' ? (zh ? '时长' : 'Duration') : (zh ? '喂养量' : 'Feeding Amount')}</span><i aria-hidden="true" /><span>{record.type === '亲喂' ? t('feedingStats.minutes', { count: record.durationMinutes }) : `${zh ? '共 ' : 'Total '}${formatVolumeFromMl(record.amount || 0, unit)}`}</span></div>
+                <div className="feeding-record-line"><span>{record.type === '亲喂' ? (zh ? '时长' : 'Duration') : (zh ? '喂养量' : 'Feeding Amount')}</span><i aria-hidden="true" /><span>{record.type === '亲喂' ? t('feedingStats.minutes', { count: record.durationMinutes || 0 }) : `${zh ? '共 ' : 'Total '}${formatVolumeFromMl(record.amount || 0, unit)}`}</span></div>
               </article>
             ))}
           </section>
@@ -400,7 +410,7 @@ const FeedingStats: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
-    </IPhoneFrame>
+    </div></div></IPhoneFrame>
   );
 };
 

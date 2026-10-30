@@ -1,3 +1,6 @@
+// @ts-expect-error Existing published navigation helper is a JS module.
+import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
+import { useLocation } from 'react-router-dom';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -14,6 +17,7 @@ const NEUMORPHIC_SHADOW =
 
 const CaptureFormulaFront: React.FC = () => {
   const navigate = useNavigate();
+  const editorLocation = useLocation();
   const [searchParams] = useSearchParams();
   const isFirstUse = searchParams.get('source') === 'first-use';
   const firstUseSuffix = isFirstUse ? '?source=first-use' : '';
@@ -102,7 +106,7 @@ const CaptureFormulaFront: React.FC = () => {
           {/* Enter Manually Link */}
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate(manualEntryPath)}
+            onClick={() => openFormulaEditor(navigate, editorLocation, manualEntryPath)}
             className="flex h-[44px] w-full items-center justify-center text-[16px] font-medium"
             style={{ color: '#221122' }}
           >

@@ -1,3 +1,4 @@
+import { demoLocal } from '@/demo/storage';
 export interface FormulaProfileListItem {
   id: string;
   brand: string;
@@ -77,25 +78,25 @@ export const DEFAULT_FORMULA_PROFILES: FormulaProfileListItem[] = [
 ];
 
 export const readFormulaProfiles = (): FormulaProfileListItem[] => {
-  const stored = localStorage.getItem(FORMULA_PROFILES_KEY);
-  if (!stored) return DEFAULT_FORMULA_PROFILES;
+  const stored = demoLocal.getItem(FORMULA_PROFILES_KEY);
+  if (!stored) return DEFAULT_FORMULA_PROFILES.map(item => ({ ...item }));
 
   try {
     const saved = JSON.parse(stored) as FormulaProfileListItem[];
-    if (!Array.isArray(saved)) return DEFAULT_FORMULA_PROFILES;
+    if (!Array.isArray(saved)) return DEFAULT_FORMULA_PROFILES.map(item => ({ ...item }));
 
-    return DEFAULT_FORMULA_PROFILES.map((profile) => ({
+    return [...DEFAULT_FORMULA_PROFILES.map((profile) => ({
       ...profile,
       ...saved.find((item) => item.id === profile.id),
-    }));
+    })), ...saved.filter(item => !DEFAULT_FORMULA_PROFILES.some(p => p.id === item.id))];
   } catch {
-    localStorage.removeItem(FORMULA_PROFILES_KEY);
-    return DEFAULT_FORMULA_PROFILES;
+    demoLocal.removeItem(FORMULA_PROFILES_KEY);
+    return DEFAULT_FORMULA_PROFILES.map(item => ({ ...item }));
   }
 };
 
 export const readSelectedFormulaId = (): string => {
-  const selectedId = localStorage.getItem(SELECTED_FORMULA_ID_KEY);
+  const selectedId = demoLocal.getItem(SELECTED_FORMULA_ID_KEY);
   return readFormulaProfiles().some((profile) => profile.id === selectedId)
     ? selectedId!
     : DEFAULT_FORMULA_PROFILES[0].id;
@@ -112,9 +113,9 @@ export const setActiveFormulaProfile = (
     waterPerScoop: profile.waterPerScoop,
   };
 
-  localStorage.setItem(SELECTED_FORMULA_ID_KEY, profile.id);
-  localStorage.setItem('formula_profile', JSON.stringify(activeProfile));
-  localStorage.setItem('formula_profile_configured', 'true');
+  demoLocal.setItem(SELECTED_FORMULA_ID_KEY, profile.id);
+  demoLocal.setItem('formula_profile', JSON.stringify(activeProfile));
+  demoLocal.setItem('formula_profile_configured', 'true');
   window.dispatchEvent(new Event('formulaProfileUpdated'));
 };
 
@@ -128,7 +129,7 @@ export const updateFormulaProfile = (
 
   const updatedProfile = { ...profiles[index], ...data };
   profiles[index] = updatedProfile;
-  localStorage.setItem(FORMULA_PROFILES_KEY, JSON.stringify(profiles));
+  demoLocal.setItem(FORMULA_PROFILES_KEY, JSON.stringify(profiles));
 
   if (readSelectedFormulaId() === id) {
     setActiveFormulaProfile(updatedProfile);
@@ -136,3 +137,10 @@ export const updateFormulaProfile = (
 
   return updatedProfile;
 };
+
+export function addFormulaProfile(data: FormulaProfileData) {
+  const profile = { ...data, id: crypto.randomUUID(), addedAt: new Date().toLocaleString('sv-SE').slice(0, 16) };
+  demoLocal.setItem(FORMULA_PROFILES_KEY, JSON.stringify([...readFormulaProfiles(), profile]));
+  setActiveFormulaProfile(profile);
+  return profile;
+}

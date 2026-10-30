@@ -1,3 +1,4 @@
+import { demoSession } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React from "react";
 import { motion } from "framer-motion";
@@ -102,7 +103,7 @@ const DeviceAssistant: React.FC = () => {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate(
-              sessionStorage.getItem('device_assistant_return_to') === '/device'
+              demoSession.getItem('device_assistant_return_to') === '/device'
                 ? '/device'
                 : '/device-settings',
             )}

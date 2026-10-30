@@ -28,6 +28,8 @@ const PowderWater: React.FC = () => {
   const displayedWater = unit === "oz" ? roundVolume(waterOz) : ozToMl(waterOz);
   const displayedWaterCapacity = unit === "oz" ? roundVolume(waterCapOz) : ozToMl(waterCapOz);
   const [saved, setSaved] = useState(false);
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const powderPercent = Math.round(
     (powder / deviceData.powderCapacity) * 100
@@ -48,7 +50,7 @@ const PowderWater: React.FC = () => {
       lastPowderRefill: dayjs().toISOString(),
     });
     setSaved(true);
-    setTimeout(() => {
+    timer.current = setTimeout(() => {
       navigate(-1);
     }, 800);
   };

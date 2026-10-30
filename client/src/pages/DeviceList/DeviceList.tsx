@@ -1,3 +1,4 @@
+import { useLoadOperation } from '@/demo/react';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
@@ -63,6 +64,7 @@ const formatLastFormulaTime = (
 
 const DeviceList: React.FC = () => {
   const navigate = useNavigate();
+  const { loaded, reload } = useLoadOperation('devices.load', 'devices');
   const { t, language } = useTranslation();
   const { unit } = useVolumeUnit();
 
@@ -103,8 +105,9 @@ const DeviceList: React.FC = () => {
             </motion.button>
           </div>
 
+          <button className="mock-list-reload" onClick={reload}>重新加载设备</button>
           {/* Scrollable Content */}
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 pt-5 pb-28">
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 pt-5 pb-28" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
             {/* Baby Monitor Card */}
             <div
               className="rounded-[20px] p-4"

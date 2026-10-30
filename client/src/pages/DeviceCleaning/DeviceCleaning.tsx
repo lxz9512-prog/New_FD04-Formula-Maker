@@ -1,3 +1,4 @@
+import { useOperation } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './device-cleaning.css';
@@ -20,7 +21,7 @@ import {
   Home,
 } from 'lucide-react';
 import IPhoneFrame from '@client/src/components/IPhoneFrame';
-import { UniversalLink } from '@lark-apaas/client-toolkit/components/UniversalLink';
+import { Link as UniversalLink } from 'react-router-dom';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 import {
   formatVolumeFromMl,
@@ -90,6 +91,7 @@ const getSterilizationSteps = (
 
 const DeviceCleaning: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useTranslation();
   const { unit } = useVolumeUnit();
   const formatUnitText = (value: string) => {
@@ -100,7 +102,7 @@ const DeviceCleaning: React.FC = () => {
   };
   const unitAwareT = (key: string, params?: Record<string, string | number>) =>
     formatUnitText(t(key, params));
-  const [selectedMode, setSelectedMode] = useState<CleaningMode | null>(null);
+  const [selectedMode, setSelectedMode] = useState<CleaningMode | null>(() => (location.state as { autoStartDescaling?: boolean } | null)?.autoStartDescaling ? 'descaling' : null);
   const [currentStep, setCurrentStep] = useState<CleaningStep>('select');
   const [dialog, setDialog] = useState<CleaningDialog>(null);
   const [prepareStep, setPrepareStep] = useState<1 | 2>(1);
@@ -130,11 +132,8 @@ const DeviceCleaning: React.FC = () => {
     powerFlashing: false,
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const location = useLocation();
   const hasAutoStarted = useRef(false);
-  const [tubeStatus, setTubeStatus] = useState(() =>
-    Math.floor(Math.random() * 301),
-  );
+  const [tubeStatus, setTubeStatus] = useState(230);
 
   const clearCleaningTimer = () => {
     if (timerRef.current) {
@@ -169,24 +168,6 @@ const DeviceCleaning: React.FC = () => {
       }
     }, 50);
   }, []);
-
-  useEffect(() => {
-    const state = location.state as { autoStartDescaling?: boolean } | null;
-    if (state?.autoStartDescaling && !hasAutoStarted.current) {
-      hasAutoStarted.current = true;
-      setSelectedMode('descaling');
-      setCurrentStep('running');
-      setRunningPhase('phase1');
-      setStatus((prev) => ({
-        ...prev,
-        waterOutput: 0,
-        currentCycle: 0,
-        powerFlashing: false,
-      }));
-      simulateDescalingPhase1();
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, simulateDescalingPhase1]);
 
   const simulateDescalingPhase2 = useCallback(() => {
     clearCleaningTimer();
@@ -285,7 +266,7 @@ const DeviceCleaning: React.FC = () => {
     }, 100);
   }, []);
 
-  const handleStartCleaning = () => {
+  const beginCleaning = () => {
     setCurrentStep('running');
     setStatus((prev) => ({
       ...prev,
@@ -302,6 +283,21 @@ const DeviceCleaning: React.FC = () => {
       simulateSterilization();
     }
   };
+
+  const startCleaningOperation = useOperation({ operation: 'cleaning.start', stage: 'cleaning', label: '启动管路清洁', success: beginCleaning }, () => { setSelectedMode('descaling'); setPrepareStep(2); setCurrentStep('prepare'); });
+  const handleStartCleaning = () => startCleaningOperation();
+
+  // Reminder deep links cross the same mock boundary as the normal start button.
+  useEffect(() => {
+    const state = location.state as { autoStartDescaling?: boolean } | null;
+    if (state?.autoStartDescaling && !hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      setCurrentStep('prepare');
+      setPrepareStep(2);
+      startCleaningOperation();
+      window.history.replaceState({ ...window.history.state, usr: null }, document.title);
+    }
+  }, [location.state, startCleaningOperation]);
 
   const handleContinuePhase2 = () => {
     setStatus((prev) => ({

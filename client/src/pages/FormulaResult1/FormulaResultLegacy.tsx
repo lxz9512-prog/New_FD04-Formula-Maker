@@ -1,3 +1,4 @@
+import { demoSession } from '@/demo/storage';
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -58,7 +59,7 @@ const FormulaResult1: React.FC = () => {
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
 
-  const savedRaw = sessionStorage.getItem(FORMULA_RESULT_KEY);
+  const savedRaw = demoSession.getItem(FORMULA_RESULT_KEY);
   const data: FormulaResultData = savedRaw ? JSON.parse(savedRaw) : DEMO_DATA;
 
   const milkMet = data.totalMilkActualOz >= data.totalMilkTargetOz - 0.2;

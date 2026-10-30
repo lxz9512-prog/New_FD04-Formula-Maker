@@ -1,3 +1,6 @@
+// @ts-expect-error Existing published navigation helper is a JS module.
+import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
+import { useLocation } from 'react-router-dom';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +20,7 @@ import {
 
 const FormulaRatio: React.FC = () => {
   const navigate = useNavigate();
+  const editorLocation = useLocation();
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
   const [profiles] = useState(readFormulaProfiles);
@@ -132,7 +136,7 @@ const FormulaRatio: React.FC = () => {
                   title={t('demo.formulaRatio.edit')}
                   onClick={(event) => {
                     event.stopPropagation();
-                    navigate(`/formula-edit?source=list&id=${profile.id}`);
+                    openFormulaEditor(navigate, editorLocation, `/formula-edit?source=list&id=${profile.id}`);
                   }}
                   className={`absolute right-2.5 flex h-8 w-8 items-center justify-center ${
                     isSelected ? 'bottom-3' : 'bottom-2'

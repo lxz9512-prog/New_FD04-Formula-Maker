@@ -1,3 +1,5 @@
+import { DemoBoundary, ScenarioConsole } from '@/demo/react';
+import { demoLocal } from '@/demo/storage';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -463,7 +465,7 @@ const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(isDesktopViewport);
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(isDesktopViewport);
   const [showInteractionLines, setShowInteractionLines] = useState(
-    () => localStorage.getItem('show_interaction_lines') !== 'false',
+    () => demoLocal.getItem('show_interaction_lines') !== 'false',
   );
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({
     0: true,
@@ -498,7 +500,7 @@ const Layout = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       setShowInteractionLines(
-        localStorage.getItem('show_interaction_lines') !== 'false',
+        demoLocal.getItem('show_interaction_lines') !== 'false',
       );
     };
 
@@ -592,10 +594,12 @@ const Layout = () => {
 
   return (
     <div className="relative flex min-h-screen bg-gradient-to-b from-[hsl(39_50%_95%)] to-[hsl(39_30%_97%)]">
+      <ScenarioConsole />
       {/* Left Sidebar Toggle */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="absolute left-2 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg transition-all hover:scale-110"
+        aria-label="打开或收起演示目录"
+        className="scene-directory-toggle absolute left-2 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg transition-all hover:scale-110"
         style={{
           boxShadow:
             '4px 4px 12px rgba(0,0,0,0.08), -4px -4px 12px rgba(255,255,255,0.9)',
@@ -681,18 +685,18 @@ const Layout = () => {
       {/* Main Content */}
       <div
         className={[
-          'flex min-w-0 flex-1 items-center justify-center overflow-auto transition-all duration-300',
+          'scene-product-content flex min-w-0 flex-1 items-center justify-center overflow-auto transition-all duration-300',
           isSidebarOpen ? 'xl:ml-64' : '',
-          isInfoPanelOpen ? 'xl:mr-[550px]' : '',
+          '',
         ].join(' ')}
       >
-        <Outlet />
+        <DemoBoundary><Outlet /></DemoBoundary>
       </div>
 
       {/* Right Panel Toggle */}
       <button
         onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)}
-        className="absolute right-2 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg transition-all hover:scale-110"
+        className="scene-old-info-toggle absolute right-2 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg transition-all hover:scale-110"
         style={{
           boxShadow:
             '4px 4px 12px rgba(0,0,0,0.08), -4px -4px 12px rgba(255,255,255,0.9)',
@@ -707,7 +711,7 @@ const Layout = () => {
 
       {/* Right Info Panel */}
       <div
-        className={`fixed right-0 top-0 z-40 h-full bg-white transition-all duration-300 ${
+        className={`scene-old-info fixed right-0 top-0 z-40 h-full bg-white transition-all duration-300 ${
           isInfoPanelOpen ? 'w-full sm:w-[420px] xl:w-[550px]' : 'w-0'
         }`}
         style={{

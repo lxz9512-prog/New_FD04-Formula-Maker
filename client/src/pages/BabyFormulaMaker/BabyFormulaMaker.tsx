@@ -1,3 +1,6 @@
+import { demoEngine } from '@/demo/engine';
+import { useOperation } from '@/demo/react';
+import { demoLocal, demoSession } from '@/demo/storage';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -101,13 +104,13 @@ const DEFAULT_FORMULA_PROFILE: FormulaProfile = {
 };
 
 const readFormulaProfile = (): FormulaProfile => {
-  const stored = localStorage.getItem('formula_profile');
+  const stored = demoLocal.getItem('formula_profile');
   if (!stored) return DEFAULT_FORMULA_PROFILE;
 
   try {
     return { ...DEFAULT_FORMULA_PROFILE, ...JSON.parse(stored) };
   } catch {
-    localStorage.removeItem('formula_profile');
+    demoLocal.removeItem('formula_profile');
     return DEFAULT_FORMULA_PROFILE;
   }
 };
@@ -182,7 +185,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   const { t, language } = useTranslation();
   const { unit } = useVolumeUnit();
   const [storedMixingChamberCount, setMixingChamberCount] = useState<number>(() => {
-    const stored = localStorage.getItem('mixing_chamber_count');
+    const stored = demoLocal.getItem('mixing_chamber_count');
     return stored ? parseInt(stored, 10) : 0;
   });
   // Exception pages preview matching readings without overwriting device storage.
@@ -198,7 +201,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   const isPrimaryControlPage = location.pathname === '/device';
   const [mode, setMode] = useState<Mode>('milk');
   const [hasFormulaProfile, setHasFormulaProfile] = useState(
-    () => localStorage.getItem('formula_profile_configured') === 'true',
+    () => demoLocal.getItem('formula_profile_configured') === 'true',
   );
   const [formulaProfile, setFormulaProfile] =
     useState<FormulaProfile>(readFormulaProfile);
@@ -299,7 +302,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   };
   const feedingHistory = (() => {
     try {
-      const value: unknown = JSON.parse(localStorage.getItem('feeding_history') || '[]');
+      const value: unknown = JSON.parse(demoLocal.getItem('feeding_history') || '[]');
       return Array.isArray(value)
         ? value.filter((entry): entry is { ml: number; time: string } =>
             typeof entry?.ml === 'number' && typeof entry?.time === 'string' && dayjs(entry.time).isValid())
@@ -416,12 +419,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
     navigate('/');
   };
 
-  const handleStart = () => {
-    if (isResourceBlocked(resourceAlarms, mode) || formulaSetupRequired)
-      return;
-    setIsMaking(true);
-    setProgress(0);
-    timerRef.current = setTimeout(() => {
+  const completePreparation = () => {
       setIsMaking(false);
       if (mode === 'milk') {
         const oz = waterAmount;
@@ -452,7 +450,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
           ml: number;
           time: string;
           totalMilk: number;
-        }> = JSON.parse(localStorage.getItem('feeding_history') || '[]');
+        }> = JSON.parse(demoLocal.getItem('feeding_history') || '[]');
         const today = dayjs().format('YYYY-MM-DD');
         const todayFeedings = feedingHistory.filter(
           (f: { time: string }) => dayjs(f.time).format('YYYY-MM-DD') === today,
@@ -480,9 +478,9 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
           time: dayjs().toISOString(),
           totalMilk: totalMilkActual,
         });
-        localStorage.setItem('feeding_history', JSON.stringify(feedingHistory));
+        demoLocal.setItem('feeding_history', JSON.stringify(feedingHistory));
 
-        sessionStorage.setItem(
+        demoSession.setItem(
           'formula_result',
           JSON.stringify({
             waterTargetOz: oz,
@@ -507,7 +505,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
 
         const newCount = mixingChamberCount + 1;
         setMixingChamberCount(newCount);
-        localStorage.setItem('mixing_chamber_count', String(newCount));
+        demoLocal.setItem('mixing_chamber_count', String(newCount));
         setLastFeeding({ oz, time: dayjs().format('HH:mm') });
         const waterUsedL = +(oz * 0.0295735).toFixed(4);
         updateDeviceData({
@@ -524,18 +522,21 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
         navigate('/formula-result');
       } else {
         setShowCompleteToast(true);
-        setTimeout(() => setShowCompleteToast(false), 2500);
+        timerRef.current = setTimeout(() => setShowCompleteToast(false), 2500);
       }
-    }, 4000);
-  };
 
-  const handleStop = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    setIsMaking(false);
   };
+  const startOperation = useOperation({
+    operation: 'preparation.start', stage: 'preparation', label: mode === 'milk' ? '调奶' : '出水', delay: 4000,
+    success: completePreparation, cancel: () => { setIsMaking(false); setProgress(0); },
+    eligible: scene => scene.id !== 'preparation.powder' || mode === 'milk',
+  }, () => setMode('milk'));
+  const handleStart = () => {
+    if (isResourceBlocked(resourceAlarms, mode) || formulaSetupRequired || isMaking) return;
+    setIsMaking(true); setProgress(0); startOperation();
+  };
+  const handleStop = () => { demoEngine.cancel(); setIsMaking(false); };
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const handleFormulaCardClick = () => {
     navigate('/formula-ratio');
@@ -647,7 +648,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
           </h1>
           <div className="control-nav-actions">
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => {
-              sessionStorage.setItem('device_assistant_return_to', '/device');
+              demoSession.setItem('device_assistant_return_to', '/device');
               navigate('/device-assistant');
             }} aria-label={t('deviceAssistant.title')}>
               <NotebookTabs className="h-5 w-5" />

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useCallback } from 'react';
+import { demoLocal } from '@/demo/storage';
+import React, { useEffect, createContext, useState, useCallback } from 'react';
 
 export type Language = 'zh' | 'en';
 
@@ -12,7 +13,7 @@ const STORAGE_KEY = 'app_language';
 
 function getInitialLanguage(): Language {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = demoLocal.getItem(STORAGE_KEY);
     if (stored === 'zh' || stored === 'en') return stored;
   } catch {
     // ignore
@@ -1002,10 +1003,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [language, setLanguageState] = useState<Language>(getInitialLanguage);
 
+  useEffect(() => {
+    const reset = () => setLanguageState(getInitialLanguage());
+    window.addEventListener('demo-data-reset', reset);
+    return () => window.removeEventListener('demo-data-reset', reset);
+  }, []);
+
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     try {
-      localStorage.setItem(STORAGE_KEY, lang);
+      demoLocal.setItem(STORAGE_KEY, lang);
     } catch {
       // ignore
     }

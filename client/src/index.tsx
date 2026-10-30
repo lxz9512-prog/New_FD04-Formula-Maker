@@ -2,33 +2,29 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
-
-import { AppContainer } from '@lark-apaas/client-toolkit/components/AppContainer';
-import { ErrorRender } from '@lark-apaas/client-toolkit/components/ErrorRender';
-
-import RoutesComponent from './app.tsx';
+import RoutesComponent from './app';
+import { Toaster } from './components/ui/sonner';
 import './index.css';
-import { createPortal } from 'react-dom';
-import { Toaster } from '@client/src/components/ui/sonner';
-
-const MainApp = () => {
-  return (
-    <HashRouter>
-      <AppContainer defaultTheme="light">
-        <ErrorBoundary
-          fallbackRender={({ error, resetErrorBoundary }) => (
-            <ErrorRender
-              error={error as Error}
-              resetErrorBoundary={resetErrorBoundary}
-            />
-          )}
-        >
-          <RoutesComponent />
-          {createPortal(<Toaster />, document.body)}
-        </ErrorBoundary>
-      </AppContainer>
-    </HashRouter>
-  );
-};
-
-createRoot(document.getElementById('root')!).render(<MainApp />);
+createRoot(document.getElementById('root')!).render(
+  <HashRouter>
+    <ErrorBoundary
+      fallbackRender={({ resetErrorBoundary }) => (
+        <main role="alert">
+          <h1>演示页面暂时无法打开</h1>
+          <button onClick={resetErrorBoundary}>重试</button>
+          <button
+            onClick={() => {
+              location.hash = '/';
+              location.reload();
+            }}
+          >
+            回到入口
+          </button>
+        </main>
+      )}
+    >
+      <RoutesComponent />
+      <Toaster />
+    </ErrorBoundary>
+  </HashRouter>,
+);

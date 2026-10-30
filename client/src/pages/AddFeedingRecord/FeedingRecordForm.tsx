@@ -1,3 +1,5 @@
+import { demoLocal } from '@/demo/storage';
+import { useOperation } from '@/demo/react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 import { motion } from 'framer-motion';
@@ -77,13 +79,19 @@ const FeedingRecordForm: React.FC<FeedingRecordFormProps> = ({ onClose }) => {
     亲友: t('feedingRecord.feeder.relatives'),
   };
 
-  const handleSubmit = () => {
+  const successTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (successTimer.current) clearTimeout(successTimer.current); }, []);
+  const submitOperation = useOperation({ operation: 'feeding.save', stage: 'feeding', label: '保存喂养记录', success: () => {
+    const records = JSON.parse(demoLocal.getItem('feeding_records') || '[]');
+    records.unshift({ id: crypto.randomUUID(), type: feedType, amount: feedType === '亲喂' ? undefined : amount,
+      durationMinutes: feedType === '亲喂' ? Math.max(1, (Date.parse(`2000-01-01T${endTime}`) - Date.parse(`2000-01-01T${startTime}`)) / 60000) : undefined,
+      time: `${format(selectedDate, 'MM/dd')} ${selectedTime}`, feeder, remark });
+    demoLocal.setItem('feeding_records', JSON.stringify(records));
+    window.dispatchEvent(new Event('feedingRecordsChanged'));
     setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      onClose();
-    }, 1200);
-  };
+    successTimer.current = setTimeout(() => { setSubmitted(false); onClose(); }, 1000);
+  }, edit: () => {} });
+  const handleSubmit = () => { if (!submitted) submitOperation(); };
 
   return (
     <>

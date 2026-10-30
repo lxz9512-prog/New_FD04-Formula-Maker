@@ -67,3 +67,8 @@ pnpm-lock.yaml
 # Agent files
 .agent/
 .npm_cache
+
+/node_modules
+/test-results/
+
+.cache/

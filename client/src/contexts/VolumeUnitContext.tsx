@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import { demoLocal } from '@/demo/storage';
+import React, { useEffect, createContext, useContext, useMemo, useState } from 'react';
 
 export type VolumeUnit = 'ml' | 'oz';
 
@@ -29,15 +30,21 @@ export const VolumeUnitProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
   const [unit, setUnitState] = useState<VolumeUnit>(() =>
-    localStorage.getItem('demo_volume_unit') === 'ml' ? 'ml' : 'oz',
+    demoLocal.getItem('demo_volume_unit') === 'ml' ? 'ml' : 'oz',
   );
+
+  useEffect(() => {
+    const reset = () => setUnitState('oz');
+    window.addEventListener('demo-data-reset', reset);
+    return () => window.removeEventListener('demo-data-reset', reset);
+  }, []);
 
   const value = useMemo<VolumeUnitContextValue>(
     () => ({
       unit,
       setUnit: (nextUnit) => {
         setUnitState(nextUnit);
-        localStorage.setItem('demo_volume_unit', nextUnit);
+        demoLocal.setItem('demo_volume_unit', nextUnit);
       },
     }),
     [unit],

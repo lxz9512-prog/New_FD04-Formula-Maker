@@ -1,3 +1,4 @@
+import { demoSession } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -228,7 +229,7 @@ const DeviceSettings: React.FC = () => {
               {
                 label: t('deviceSettings.smartAssistant'),
                 onClick: () => {
-                  sessionStorage.setItem('device_assistant_return_to', '/device-settings');
+                  demoSession.setItem('device_assistant_return_to', '/device-settings');
                   navigate('/device-assistant');
                 },
               },

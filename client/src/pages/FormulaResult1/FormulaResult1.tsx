@@ -1,3 +1,5 @@
+import { hasBaby } from '@/demo/BabyProfile';
+import { demoSession } from '@/demo/storage';
 import React, { useEffect, useId, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +19,7 @@ interface ResultData {
 function readResult(): ResultData {
   const fallback = { totalMilkTargetOz: 2.9, totalMilkActualOz: 2.8, timestamp: new Date().toISOString() };
   try {
-    const data = JSON.parse(sessionStorage.getItem('formula_result') || 'null');
+    const data = JSON.parse(demoSession.getItem('formula_result') || 'null');
     if (data && Number.isFinite(data.totalMilkTargetOz) && data.totalMilkTargetOz > 0 &&
       Number.isFinite(data.totalMilkActualOz) && data.totalMilkActualOz >= 0 && typeof data.timestamp === 'string') return data;
   } catch { /* Direct preview or invalid saved result: use sample values. */ }
@@ -35,7 +37,7 @@ export default function FormulaResult1() {
   const gradientId = useId();
   const [data] = React.useState(readResult);
   const [showLogged, setShowLogged] = React.useState(false);
-  const acknowledge = () => setShowLogged(true);
+  const acknowledge = () => { if (hasBaby()) setShowLogged(true); else navigate('/no-baby'); };
   useEffect(() => { dialogRef.current?.focus({ preventScroll: true }); }, []);
   useEffect(() => {
     if (!showLogged) return;

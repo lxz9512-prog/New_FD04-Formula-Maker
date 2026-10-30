@@ -1,3 +1,8 @@
+// @ts-expect-error Existing published navigation helper is a JS module.
+import { formulaEditReturnTarget } from '@/demo/formula-edit-navigation.js';
+import { useLocation } from 'react-router-dom';
+import { useOperation } from '@/demo/react';
+import { demoLocal } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -16,6 +21,7 @@ import {
   readFormulaProfiles,
   readSelectedFormulaId,
   updateFormulaProfile,
+  addFormulaProfile,
 } from '../formulaProfiles';
 
 type FormulaData = FormulaProfileData;
@@ -59,6 +65,7 @@ const getInitialData = (
 
 const FormulaEdit: React.FC = () => {
   const navigate = useNavigate();
+  const editorLocation = useLocation();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
@@ -124,19 +131,13 @@ const FormulaEdit: React.FC = () => {
     !ratioOutOfRange;
 
   const handleBack = () => {
-    navigate(
-      isFirstUse
-        ? '/device'
-        : mode === 'edit'
-          ? '/formula-ratio'
-          : mode === 'manual'
-            ? '/scan-formula'
-            : '/capture-formula-step2',
-    );
+    const fallback = isFirstUse ? '/device' : mode === 'edit' ? '/formula-ratio' : mode === 'manual' ? '/scan-formula' : '/capture-formula-step2';
+    const target = formulaEditReturnTarget(editorLocation.state, fallback);
+    navigate(target.to, target.options);
   };
 
-  const handleDone = () => {
-    if (!canSave) return;
+  const saveOperation = useOperation({ operation: 'formula.save', stage: 'formula', label: '保存配比',
+    success: () => {
 
     const profile = { ...data, brand: data.brand.trim() };
     if (mode === 'edit' && formulaId) {
@@ -145,11 +146,12 @@ const FormulaEdit: React.FC = () => {
       return;
     }
 
-    localStorage.setItem('formula_profile', JSON.stringify(profile));
-    localStorage.setItem('formula_profile_configured', 'true');
-    window.dispatchEvent(new Event('formulaProfileUpdated'));
+    addFormulaProfile(profile);
     navigate(isFirstUse ? '/device' : '/formula-ratio');
-  };
+    },
+    edit: () => {},
+  }, () => { if (!data.brand.trim()) setData(getInitialData('recognition', null)); });
+  const handleDone = () => { if (canSave) saveOperation(); };
 
   const adjustPowder = (delta: number) => {
     setData((prev) => ({

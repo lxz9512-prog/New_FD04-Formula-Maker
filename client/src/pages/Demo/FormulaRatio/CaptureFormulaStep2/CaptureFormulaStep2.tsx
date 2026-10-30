@@ -1,3 +1,7 @@
+// @ts-expect-error Existing published navigation helper is a JS module.
+import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
+import { useLocation } from 'react-router-dom';
+import { useOperation } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,7 +14,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import IPhoneFrame from '@client/src/components/IPhoneFrame';
-import { logger } from '@lark-apaas/client-toolkit/logger';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 
 const CAMERA_VIEWFINDER_IMAGE =
@@ -26,6 +29,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
   initialFailure,
 }) => {
   const navigate = useNavigate();
+  const editorLocation = useLocation();
   const [searchParams] = useSearchParams();
   const isFirstUse = searchParams.get('source') === 'first-use';
   const firstUseSuffix = isFirstUse ? '?source=first-use' : '';
@@ -50,65 +54,13 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
     setFailureMode(initialFailure ?? null);
   }, [initialFailure]);
 
-  useEffect(() => {
-    if (isUploading && uploadProgress < 100) {
-      const timer = setTimeout(() => {
-        setUploadProgress((prev) => {
-          const next = prev + Math.floor(Math.random() * 15) + 5;
-          return next >= 100 ? 100 : next;
-        });
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-    if (uploadProgress === 100) {
-      const timer = setTimeout(() => {
-        setIsUploading(false);
-        setShowSuccess(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isUploading, uploadProgress]);
+  const captureOperation = useOperation({
+    operation: 'capture.analyze', stage: 'capture', label: '上传并识别配比', delay: 2600,
+    success: () => openFormulaEditor(navigate, editorLocation, recognitionResultPath),
+    edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')),
+  });
+  const handleCapture = () => { setFailureMode(null); captureOperation(); };
 
-  useEffect(() => {
-    if (showSuccess) {
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-        setIsRecognizing(true);
-        setRecognizeProgress(0);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccess]);
-
-  useEffect(() => {
-    if (isRecognizing && recognizeProgress < 100) {
-      const timer = setTimeout(() => {
-        setRecognizeProgress((prev) => {
-          const next = prev + Math.floor(Math.random() * 12) + 3;
-          return next >= 100 ? 100 : next;
-        });
-      }, 180);
-      return () => clearTimeout(timer);
-    }
-    if (recognizeProgress === 100) {
-      const timer = setTimeout(() => {
-        setIsRecognizing(false);
-        setRecognizeProgress(0);
-        setUploadProgress(0);
-        navigate(recognitionResultPath);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [isRecognizing, recognizeProgress, navigate, recognitionResultPath]);
-
-  const handleCapture = () => {
-    logger.info('Capture clicked');
-    setIsUploading(true);
-    setUploadProgress(0);
-    setShowSuccess(false);
-    setIsRecognizing(false);
-    setRecognizeProgress(0);
-  };
 
   const handleFailurePrimaryAction = () => {
     if (failureMode === 'upload') {
@@ -195,7 +147,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 type="button"
-                onClick={() => navigate(manualEntryPath)}
+                onClick={() => openFormulaEditor(navigate, editorLocation, manualEntryPath)}
                 className="flex h-10 w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold"
                 style={{
                   background: 'hsl(39, 40%, 96%)',
@@ -531,6 +483,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
 
             <motion.button
               whileTap={{ scale: 0.9 }}
+              aria-label="拍摄照片"
               onClick={handleCapture}
               className="flex h-[64px] w-[64px] items-center justify-center rounded-full"
               style={{

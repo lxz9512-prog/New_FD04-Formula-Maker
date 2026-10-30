@@ -1,3 +1,4 @@
+import { demoLocal } from '@/demo/storage';
 import { useState, useEffect, useCallback } from "react";
 import dayjs from "dayjs";
 
@@ -39,7 +40,7 @@ function normalizeData(data: DeviceData): DeviceData {
 
 function loadData(): DeviceData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = demoLocal.getItem(STORAGE_KEY);
     if (raw) return normalizeData({ ...DEFAULT_DATA, ...JSON.parse(raw) });
   } catch {
     // ignore
@@ -48,7 +49,7 @@ function loadData(): DeviceData {
 }
 
 function saveData(data: DeviceData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  demoLocal.setItem(STORAGE_KEY, JSON.stringify(data));
   window.dispatchEvent(new CustomEvent("device-data-change", { detail: data }));
 }
 

@@ -150,10 +150,12 @@
     "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0",
     "zod": "^3.25.76",
-    "zustand": "~5.0.8"
+    "zustand": "~5.0.8",
+    "@vitejs/plugin-react": "^4.7.0",
+    "playwright": "^1.55.1"
   },
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.18.0",
     "npm": ">=10.0.0"
   },
   "flags": {
@@ -170,18 +172,18 @@
       "<rootDir>/test/unit/**/*.spec.ts"
     ]
   },
-  "name": "fullstack-nestjs-template",
+  "name": "new-fd04-formula-maker",
   "overrides": {
     "dayjs": "^1.11.15"
   },
   "private": true,
   "scripts": {
-    "build": "./scripts/build.sh",
+    "build": "vite build",
     "build:client": "NODE_ENV=production vite build --config vite.config.ts",
     "build:sites": "node scripts/build-sites.mjs",
     "build:prod": "npm run build:server && npm run build:client",
     "build:server": "NODE_ENV=production nest build",
-    "dev": "./scripts/dev.sh",
+    "dev": "vite",
     "dev:client": "NODE_ENV=development vite --config vite.config.ts",
     "dev:server": "NODE_ENV=development nest start --watch",
     "eslint": "eslint . --quiet",
@@ -191,15 +193,16 @@
     "lint": "node ./scripts/lint.js",
     "start": "NODE_ENV=production node main.js",
     "stylelint": "stylelint client/src/**/*.css --quiet",
-    "test": "jest",
-    "test:e2e": "jest --config test/e2e/jest.config.js",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:e2e": "node tests/demo.e2e.mjs",
     "test:watch": "jest --watch",
     "type:check": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run type:check:server\" \"npm run type:check:client\"",
     "type:check:client": "tsc --noEmit --project tsconfig.app.json",
     "type:check:server": "tsc --noEmit --project tsconfig.node.json",
     "prepare": "chmod +x .githooks/pre-commit 2>/dev/null; git config core.hooksPath .githooks 2>/dev/null || true",
     "precommit": "node scripts/hooks/run-precommit.js",
-    "postinstall": "fullstack-cli action-plugin init"
+    "preview": "vite preview --host 127.0.0.1 --port 4174",
+    "typecheck": "tsc --noEmit -p tsconfig.demo.json"
   },
   "version": "2.2.6"
 }
