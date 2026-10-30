@@ -1,5 +1,5 @@
 import { demoEngine } from '@/demo/engine';
-import { useDemo, useOperation, PageOperationState } from '@/demo/react';
+import { useDemo, useOperation, OperationLabel } from '@/demo/react';
 import { demoLocal, demoSession } from '@/demo/storage';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -179,6 +179,10 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   powderError = powderError || fault === 'powder';
   waterQualityError = waterQualityError || fault === 'quality';
   powderCleanDue = powderCleanDue || fault === 'chamber';
+  powderCleanReminder = powderCleanReminder || fault === 'chamber-reminder';
+  nightWaterLow = nightWaterLow || fault === 'night-water';
+  cleaningIncomplete = cleaningIncomplete || fault === 'cleaning-incomplete';
+  tubeCleanReminderProp = tubeCleanReminderProp || fault === 'tube-reminder';
   const [waterLowDismissed, setWaterLowDismissed] = useState(false);
   const [powderErrorDismissed, setPowderErrorDismissed] = useState(false);
   const [dismissedChamberCount, setDismissedChamberCount] =
@@ -186,6 +190,12 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   const [waterCalibrationDismissed, setWaterCalibrationDismissed] =
     useState(false);
   const [tubeCleanDismissed, setTubeCleanDismissed] = useState(false);
+  useEffect(() => {
+    setWaterLowDismissed(false);
+    setPowderErrorDismissed(false);
+    setDismissedChamberCount(null);
+    setTubeCleanDismissed(false);
+  }, [demoActive?.id]);
   const showWaterCalibrationReminder =
     false && waterCalibrationReminderProp && !waterCalibrationDismissed; // FD06 no longer supports water calibration; retain legacy UI only.
   const showTubeCleanReminder = tubeCleanReminderProp && !tubeCleanDismissed;
@@ -212,9 +222,11 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   );
   const [formulaProfile, setFormulaProfile] =
     useState<FormulaProfile>(readFormulaProfile);
-  const showFormulaControls = !isPrimaryControlPage || hasFormulaProfile;
+  const previewProfile = demoActive?.request.operation === 'preparation.start' && !!demoActive.scene;
+  const hasUsableProfile = hasFormulaProfile || previewProfile;
+  const showFormulaControls = !isPrimaryControlPage || hasUsableProfile;
   const formulaSetupRequired =
-    isPrimaryControlPage && mode === 'milk' && !hasFormulaProfile;
+    isPrimaryControlPage && mode === 'milk' && !hasUsableProfile;
   const [waterAmount, setWaterAmount] = useState(
     WATER_CONFIG['milk'].defaultAmount,
   );
@@ -539,8 +551,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
     eligible: scene => scene.id !== 'preparation.powder' || mode === 'milk',
   }, () => {
     setMode('milk');
-    // Preview-only prerequisites stay in component memory, not saved profiles.
-    setHasFormulaProfile(true);
+    // Scenario-only prerequisites are projected while active; restoring normal restores setup state.
   });
   useEffect(() => { if (demoActive?.request.operation === 'preparation.start' && demoActive.status === 'error') setIsMaking(false); }, [demoActive?.status]);
   const handleStart = () => {
@@ -642,7 +653,6 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
     >
       <div className="fd06-control relative flex h-full flex-col" inert={completionOverlay ? true : undefined} aria-hidden={completionOverlay ? true : undefined} data-warning={Boolean(waterLowActive || powderErrorActive || powderCleanDue || nightWaterLow || showPowderCleanReminder || showWaterCalibrationReminder || showTubeCleanReminder)}>
         {/* Navigation Bar */}
-        <PageOperationState operations={['preparation.start']} />
         <div className="control-nav flex items-center justify-between">
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1354,7 +1364,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
           </div>
 
           {/* First-use formula setup */}
-          {isPrimaryControlPage && mode === 'milk' && !hasFormulaProfile && (
+          {isPrimaryControlPage && mode === 'milk' && !hasUsableProfile && (
             <motion.button
               data-connector="formula-first-use"
               initial={{ opacity: 0, y: 8 }}
@@ -1722,7 +1732,9 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
                 ) : (
                   <Play className="h-5 w-5 fill-current" />
                 )}
-                {isMaking
+                {demoActive?.request.operation === 'preparation.start' && demoActive.scene && !demoActive.scene.presentation
+                  ? <OperationLabel operation="preparation.start">{t('maker.start')}</OperationLabel>
+                  : isMaking
                   ? t('maker.stop')
                   : formulaSetupRequired
                     ? t('maker.configureFormulaFirst')

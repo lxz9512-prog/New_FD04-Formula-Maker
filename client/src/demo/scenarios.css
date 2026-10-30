@@ -258,15 +258,6 @@
   display: block;
   margin: 10px 0;
 }
-.mock-list-reload {
-  font-size: 11px;
-  margin: 6px 20px;
-  padding: 4px 10px;
-  color: #a38670;
-  border: 1px solid #e5d9cc;
-  border-radius: 16px;
-  align-self: flex-start;
-}
 @media (min-width: 1200px) {
   .demo-workspace {
     --directory-width: 0px;
@@ -503,55 +494,4 @@
   background: #fffdf9;
   box-shadow: 0 2px 6px #744e2410;
 }
-.scene-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 7px;
-  margin: 9px 0 6px;
-}
-.scene-actions button {
-  font-size: 11px;
-  padding: 10px 4px;
-  border-radius: 20px;
-}
-.scene-secondary {
-  color: #8b4a1b;
-  border: 1px solid #d5bda6;
-  background: #fbf4e9;
-}
-.scene-advanced {
-  margin: 12px 0;
-  border-top: 1px solid #eee4d7;
-  padding-top: 8px;
-}
-.scene-advanced summary {
-  cursor: pointer;
-  font-size: 10px;
-  color: #9e856e;
-}
 /* Quiet native content state, not an injected dialog, toast or demo announcement. */
-.mock-content-state {
-  margin: 12px 20px;
-  padding: 18px 12px;
-  border-radius: 14px;
-  background: #fffaf3;
-  color: #9b7c65;
-  font-size: 12px;
-  text-align: center;
-}
-.mock-content-state button {
-  margin: 10px 4px 0;
-  border: 1px solid #e2d3c1;
-  border-radius: 15px;
-  padding: 4px 12px;
-  color: #8b4a1b;
-  font-size: 11px;
-}
-.mock-inline-state {
-  border-left: 2px solid #d4b18d;
-  margin: 8px 16px;
-  padding: 5px 10px;
-  color: #9b7c65;
-  font-size: 11px;
-}

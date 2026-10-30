@@ -1,4 +1,4 @@
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './device-cleaning.css';
@@ -284,7 +284,7 @@ const DeviceCleaning: React.FC = () => {
     }
   };
 
-  const startCleaningOperation = useOperation({ operation: 'cleaning.start', stage: 'cleaning', label: '启动管路清洁', success: beginCleaning }, () => { setSelectedMode('descaling'); setPrepareStep(2); setCurrentStep('prepare'); });
+  const startCleaningOperation = useOperation({ operation: 'cleaning.start', stage: 'cleaning', label: '启动管路清洁', success: beginCleaning, cancel: clearCleaningTimer }, () => { clearCleaningTimer(); setSelectedMode('descaling'); setPrepareStep(2); setCurrentStep('prepare'); });
   const handleStartCleaning = () => startCleaningOperation();
 
   // Reminder deep links cross the same mock boundary as the normal start button.
@@ -520,7 +520,7 @@ const DeviceCleaning: React.FC = () => {
               ? language === 'zh'
                 ? '继续'
                 : 'Continue'
-              : t('cleaning.startClean')}
+              : <OperationLabel operation="cleaning.start">{t('cleaning.startClean')}</OperationLabel>}
           </motion.button>
         </div>
       </main>
@@ -612,7 +612,7 @@ const DeviceCleaning: React.FC = () => {
         >
           <Play className="h-5 w-5 text-white" />
           <span className="text-[15px] font-semibold text-white">
-            {t('cleaning.startClean')}
+            <OperationLabel operation="cleaning.start">{t('cleaning.startClean')}</OperationLabel>
           </span>
         </motion.button>
       </div>
@@ -1195,7 +1195,7 @@ const DeviceCleaning: React.FC = () => {
       <div
         className={`flex h-full flex-col ${currentStep === 'select' ? 'tube-cleaning-page' : ''}`}
       >
-        <PageOperationState operations={['cleaning.start']} />
+
         <div className="fd06-page-nav">
           {(currentStep !== 'running' && !isDescalingComplete) ||
           isSterilizationRunning ? (

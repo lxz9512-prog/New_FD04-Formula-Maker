@@ -180,7 +180,7 @@ export class ScenarioEngine {
           status: scene.outcome === 'empty' ? 'empty' : 'error',
           progress: 100,
         },
-        lastEvent: `直接预览：${scene.name}（未提交数据）`,
+        lastEvent: `当前场景：${scene.name}（未提交数据）`,
       });
       return true;
     }
@@ -244,6 +244,13 @@ export class ScenarioEngine {
       }
     }, duration);
     return true;
+  }
+  setRetry(retry: Retry) {
+    const active = this.state.active;
+    if (active?.injection)
+      this.publish({
+        active: { ...active, injection: { ...active.injection, retry } },
+      });
   }
   retry = () => {
     const current = this.state.active;

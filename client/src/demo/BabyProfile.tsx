@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOperation, PageOperationState } from './react';
+import { useOperation, OperationLabel } from './react';
 import { demoLocal } from './storage';
 import React from 'react';
 import IPhoneFrame from '@/components/IPhoneFrame';
@@ -71,7 +71,6 @@ export function AddBabyPage() {
           <h1>{zh ? '添加宝宝' : 'Add Baby'}</h1>
           <div style={{ width: 32 }} />
         </div>
-        <PageOperationState operations={['baby.save']} />
         <form
           className="baby-add-form"
           onSubmit={(e) => {
@@ -130,7 +129,9 @@ export function AddBabyPage() {
               : 'Demo details stay in this browser and are not uploaded.'}
           </p>
           <button type="submit" className="baby-primary baby-save">
-            {zh ? '保存' : 'Save'}
+            <OperationLabel operation="baby.save">
+              {zh ? '保存' : 'Save'}
+            </OperationLabel>
           </button>
         </form>
       </div>

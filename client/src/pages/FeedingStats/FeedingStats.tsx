@@ -167,7 +167,7 @@ const MOCK_RECORDS: FeedRecord[] = [
 
 const FeedingStats: React.FC = () => {
   const navigate = useNavigate();
-  const { loaded, reload } = useLoadOperation('feeding.load', 'feeding');
+  const { loaded } = useLoadOperation('feeding.load', 'feeding');
   const [recordRevision, refreshRecords] = React.useReducer(n => n + 1, 0);
   React.useEffect(() => { window.addEventListener('feedingRecordsChanged', refreshRecords); return () => window.removeEventListener('feedingRecordsChanged', refreshRecords); }, []);
   let savedRecords: FeedRecord[] = [];
@@ -271,7 +271,7 @@ const FeedingStats: React.FC = () => {
   };
 
   return (
-    <IPhoneFrame background="#FFFFFF"><div className="h-full flex flex-col"><button className="mock-list-reload" onClick={reload}>重新加载记录</button><PageOperationState operations={['feeding.load']} emptyText="暂无喂养记录，可添加第一条记录" /><div className="min-h-0 flex-1" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
+    <IPhoneFrame background="#FFFFFF"><div className="h-full flex flex-col"><PageOperationState operations={['feeding.load']} emptyText="暂无喂养记录，可添加第一条记录" /><div className="min-h-0 flex-1" style={{ display: loaded ? undefined : 'none' }}>
       <div className="feeding-stats-page">
         <header className="fd06-page-nav">
           <motion.button

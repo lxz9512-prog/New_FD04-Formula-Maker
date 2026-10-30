@@ -1,4 +1,4 @@
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { demoEngine } from '@/demo/engine';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from "react";
@@ -39,7 +39,7 @@ const NotificationSettings: React.FC = () => {
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="flex h-full flex-col">
-        <PageOperationState operations={['settings.notifications']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -73,7 +73,7 @@ const NotificationSettings: React.FC = () => {
               className="text-[12px] leading-relaxed"
               style={{ color: "#8B4A1B" }}
             >
-              {t("notificationSettings.tip")}
+              <OperationLabel operation="settings.notifications">{t("notificationSettings.tip")}</OperationLabel>
             </p>
           </div>
 

@@ -1,4 +1,4 @@
-import { useLoadOperation, useOperation, PageOperationState } from '@/demo/react';
+import { useLoadOperation, useOperation, OperationLabel, PageOperationState } from '@/demo/react';
 import { demoEngine } from '@/demo/engine';
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
@@ -25,7 +25,7 @@ const FormulaRatio: React.FC = () => {
   const editorLocation = useLocation();
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
-  const { loaded, reload } = useLoadOperation('formula.load', 'formula');
+  const { loaded } = useLoadOperation('formula.load', 'formula');
   const pendingId = React.useRef<string>('');
   const [profiles] = useState(readFormulaProfiles);
   const [selectedId, setSelectedId] = useState(readSelectedFormulaId);
@@ -75,7 +75,7 @@ const FormulaRatio: React.FC = () => {
           </motion.button>
         </div>
 
-        <button className="mock-list-reload" onClick={reload}>重新加载配比</button>
+
         <PageOperationState operations={['formula.load', 'formula.select']} emptyText="暂无配比，请扫描或手动添加" />
         <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-6 pt-4">
           {loaded && orderedProfiles.map((profile) => {
@@ -116,7 +116,7 @@ const FormulaRatio: React.FC = () => {
                       color: '#8B4A1B',
                     }}
                   >
-                    {t('demo.formulaRatio.active')}
+                    <OperationLabel operation="formula.select">{t('demo.formulaRatio.active')}</OperationLabel>
                   </motion.span>
                 )}
                 <div className={isSelected ? 'pr-12' : ''}>

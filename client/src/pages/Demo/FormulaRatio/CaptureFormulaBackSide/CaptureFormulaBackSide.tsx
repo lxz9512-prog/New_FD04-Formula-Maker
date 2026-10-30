@@ -1,4 +1,4 @@
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -31,7 +31,7 @@ const CaptureFormulaBackSide: React.FC = () => {
             'linear-gradient(180deg, hsl(45, 60%, 92%) 0%, hsl(39, 50%, 97%) 50%, #fff 100%)',
         }}
       >
-      <PageOperationState operations={['camera.open']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -97,7 +97,7 @@ const CaptureFormulaBackSide: React.FC = () => {
             className="flex h-[56px] w-full items-center justify-center rounded-full text-[17px] font-semibold text-white"
             style={{ backgroundColor: 'hsl(24, 67%, 32%)' }}
           >
-            {t('demo.captureFormulaBackSide.startCapturing')}
+            <OperationLabel operation="camera.open">{t('demo.captureFormulaBackSide.startCapturing')}</OperationLabel>
           </motion.button>
         </div>
       </div>

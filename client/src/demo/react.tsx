@@ -7,7 +7,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { demoEngine, type Request, type Policy, type Retry } from './engine';
+import { demoEngine, type Request, type Retry } from './engine';
 import {
   getScene,
   scenes,
@@ -81,43 +81,44 @@ export function useOperation(request: Request, ready: () => void = () => {}) {
       }
     };
   }, [request.operation]);
-  return useCallback(() => demoEngine.run({ ...latest.current }), []);
+  return useCallback(() => {
+    const active = demoEngine.getSnapshot().active;
+    // The original App action is also a recovery action for the selected rule.
+    // Do not silently replace a selected failure with a successful transaction.
+    if (
+      active?.scene &&
+      active.request.operation === latest.current.operation
+    ) {
+      if (active.status !== 'loading') demoEngine.retry();
+      return;
+    }
+    demoEngine.run({ ...latest.current });
+  }, []);
 }
 export function useLoadOperation(
   operation: 'devices.load' | 'feeding.load' | 'formula.load',
   stage: Stage,
 ) {
-  const [loaded, setLoaded] = useState(false);
-  const run = useOperation(
-    {
-      operation,
-      stage,
-      label:
-        stage === 'devices'
-          ? '加载设备列表'
-          : stage === 'formula'
-            ? '加载配比列表'
-            : '加载喂养记录',
-      success: () => setLoaded(true),
-      edit:
-        stage === 'feeding'
-          ? () => {
-              location.hash = '/feeding-stats/add-record';
-            }
-          : undefined,
-    },
-    () => setLoaded(false),
-  );
-  useEffect(() => {
-    if (!pendingPreview && !demoEngine.getSnapshot().active) run();
-  }, [run]);
-  return {
-    loaded,
-    reload: () => {
-      setLoaded(false);
-      run();
-    },
-  };
+  const { active } = useDemo();
+  useOperation({
+    operation,
+    stage,
+    label:
+      stage === 'devices'
+        ? '加载设备列表'
+        : stage === 'formula'
+          ? '加载配比列表'
+          : '加载喂养记录',
+    success: () => {},
+    edit:
+      stage === 'feeding'
+        ? () => {
+            window.location.hash = '/feeding-stats/add-record';
+          }
+        : undefined,
+  });
+  // Local samples are ready immediately. Only an explicitly selected scenario replaces them.
+  return { loaded: active?.request.operation !== operation };
 }
 export function DemoBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -156,7 +157,6 @@ export function ScenarioConsole() {
   const [collapsed, setCollapsed] = useState(false);
   const [environment, setEnvironment] = useState(false);
   const [selected, setSelected] = useState('');
-  const [policy, setPolicy] = useState<Policy>('once');
   const [retry, setRetry] = useState<Retry>('success');
   const titleRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -182,28 +182,29 @@ export function ScenarioConsole() {
   const list = environment
     ? scenes.filter((s) => s.stage === 'global')
     : scenesForOperations(operations);
-  const scene = list.find((s) => s.id === selected) ?? list[0];
-  const globalActive = snapshot.injections.global;
-  const matchedOperation =
-    scene &&
-    (scene.stage === 'global'
-      ? operations.find((op) => registry.has(op))
-      : operations.find(
-          (op) => scene.operations.includes(op) && registry.has(op),
-        ));
-  function apply(mode: 'next' | 'preview') {
-    if (!scene || (globalActive && !environment)) return;
-    if (mode === 'next') {
-      pendingPreview = undefined;
-      demoEngine.arm(scene.id, policy, retry);
-    } else if (matchedOperation) {
-      demoEngine.normal();
-      pendingPreview = scene.id;
-      previewRetry = retry;
-      activatePreview(matchedOperation);
-    }
+  const scene = list.find((s) => s.id === selected);
+  const available = operations.some((op) => registry.has(op));
+  function choose(id: string) {
+    setSelected(id);
+    pendingPreview = undefined;
+    demoEngine.normal();
+    if (!id) return;
+    const next = getScene(id);
+    if (!next) return;
+    const operation = operations.find(
+      (op) =>
+        registry.has(op) &&
+        (next.stage === 'global' || next.operations.includes(op)),
+    );
+    if (!operation) return;
+    previewRetry = retry;
+    pendingPreview = id;
+    activatePreview(operation);
   }
-  const armed = Object.values(snapshot.injections).filter(Boolean);
+  // Recovery clears the selection; selecting the same rule again can replay it.
+  useEffect(() => {
+    if (!snapshot.active?.scene) setSelected('');
+  }, [snapshot.active?.scene?.id]);
   return (
     <div
       className={`scene-console-slot ${!open ? 'is-hidden' : collapsed ? 'is-collapsed' : ''}`}
@@ -215,7 +216,7 @@ export function ScenarioConsole() {
           onClick={() => setOpen(true)}
           aria-label="打开场景控制台"
         >
-          ◈ 场景控制台{armed.length > 0 ? ` · ${armed.length} 待触发` : ''}
+          ◈ 场景控制台
         </button>
       )}
       {open && (
@@ -271,7 +272,6 @@ export function ScenarioConsole() {
                       aria-pressed={!environment}
                       onClick={() => {
                         setEnvironment(false);
-                        setSelected('');
                       }}
                     >
                       本页异常
@@ -280,7 +280,6 @@ export function ScenarioConsole() {
                       aria-pressed={environment}
                       onClick={() => {
                         setEnvironment(true);
-                        setSelected('');
                       }}
                     >
                       全局环境
@@ -292,9 +291,13 @@ export function ScenarioConsole() {
                         选择要演示的情况
                         <select
                           aria-label="本页异常"
-                          value={scene?.id ?? ''}
-                          onChange={(e) => setSelected(e.target.value)}
+                          value={
+                            list.some((s) => s.id === selected) ? selected : ''
+                          }
+                          disabled={!available}
+                          onChange={(e) => choose(e.target.value)}
                         >
+                          <option value="">正常状态</option>
                           {list.map((s) => (
                             <option key={s.id} value={s.id}>
                               {s.name}
@@ -309,82 +312,24 @@ export function ScenarioConsole() {
                           <p>恢复路径：{scene.recovery}</p>
                         </div>
                       )}
-                      <div className="scene-actions">
-                        <button
-                          className="scene-primary"
-                          onClick={() => apply('preview')}
-                          disabled={
-                            !matchedOperation ||
-                            (!!globalActive && !environment)
-                          }
-                        >
-                          立即展示
-                        </button>
-                        <button
-                          className="scene-secondary"
-                          onClick={() => apply('next')}
-                          disabled={
-                            (!!globalActive && !environment) ||
-                            (!environment && !matchedOperation)
-                          }
-                        >
-                          操作后触发
-                        </button>
-                      </div>
                       <p className="scene-hint">
-                        立即展示：留在本页，不提交数据。
-                        <br />
-                        操作后触发：设置后，在 App 内
-                        {environment ? '进行下一次支持的操作' : page.action}
-                        ，经过等待后出现异常。
+                        选择即展示，不提交业务数据。沿用原有异常界面与操作入口；模拟说明及恢复控制仅放在此处。
                       </p>
-                      {!matchedOperation && (
-                        <p className="scene-warning">
-                          本页没有可执行的模拟请求。全局环境可先设置，进入业务页后触发；不会把说明页伪装成请求失败。
-                        </p>
-                      )}
-                      {globalActive && !environment && (
-                        <p className="scene-warning">
-                          全局环境正在生效，请先“恢复正常”再演示本页异常。
-                        </p>
-                      )}
-                      <details className="scene-advanced">
-                        <summary>
-                          高级设置 · {policy === 'once' ? '仅一次' : '持续生效'}{' '}
-                          · {retry === 'success' ? '重试成功' : '重试继续失败'}
-                        </summary>
-                        <div className="scene-two">
-                          <label>
-                            触发次数
-                            <select
-                              aria-label="触发次数"
-                              value={policy}
-                              onChange={(e) =>
-                                setPolicy(e.target.value as Policy)
-                              }
-                            >
-                              <option value="once">仅一次</option>
-                              <option value="persistent">持续生效</option>
-                            </select>
-                          </label>
-                          <label>
-                            重试策略
-                            <select
-                              aria-label="重试策略"
-                              value={retry}
-                              onChange={(e) =>
-                                setRetry(e.target.value as Retry)
-                              }
-                            >
-                              <option value="success">重试后成功</option>
-                              <option value="failure">重试后继续失败</option>
-                            </select>
-                          </label>
-                        </div>
-                        <p className="scene-hint">
-                          次数用于“操作后触发”；立即展示不消耗业务次数，不自动提交。
-                        </p>
-                      </details>
+                      <label>
+                        恢复操作结果
+                        <select
+                          aria-label="重试策略"
+                          value={retry}
+                          onChange={(e) => {
+                            const value = e.target.value as Retry;
+                            setRetry(value);
+                            demoEngine.setRetry(value);
+                          }}
+                        >
+                          <option value="success">重试后成功</option>
+                          <option value="failure">重试后继续失败</option>
+                        </select>
+                      </label>
                     </>
                   ) : (
                     <div className="scene-description">
@@ -397,57 +342,14 @@ export function ScenarioConsole() {
                     <p className="scene-hint">{page.note}</p>
                   )}
                   <section className="scene-queue" aria-live="polite">
-                    <h3>待触发场景</h3>
-                    {armed.length === 0 ? (
-                      <p>
-                        {snapshot.active?.scene
-                          ? '无待触发场景 · 当前场景已触发'
-                          : '无待触发场景 · 正常模式'}
-                      </p>
-                    ) : (
-                      armed.map((item) => {
-                        const s = getScene(item!.sceneId);
-                        return (
-                          <p key={item!.sceneId}>
-                            <b>{s?.name}</b>
-                            <br />
-                            {s?.prerequisite}
-                            <br />
-                            {item!.policy === 'once'
-                              ? '仅一次 · 触发即清除'
-                              : '持续生效'}{' '}
-                            /{' '}
-                            {item!.retry === 'success'
-                              ? '重试成功'
-                              : '重试继续失败'}
-                          </p>
-                        );
-                      })
-                    )}
-                    {snapshot.active?.scene && (
-                      <p>
-                        <b>
-                          当前{snapshot.active.preview ? '预览' : '执行'}：
-                          {snapshot.active.scene.name}
-                        </b>
-                        <br />
-                        {snapshot.active.status === 'loading'
-                          ? '等待中 · 尚未提交'
-                          : '已触发 · 尚未提交'}{' '}
-                        /{' '}
-                        {snapshot.active.injection?.retry === 'failure'
-                          ? '重试继续失败'
-                          : '重试后成功'}
-                      </p>
-                    )}
+                    <h3>当前场景</h3>
+                    <p>{snapshot.active?.scene?.name ?? '正常状态'}</p>
                     <p className="scene-last">{snapshot.lastEvent}</p>
-                    {snapshot.active?.preview && (
-                      <p>直接预览已生效；恢复按钮会执行本页真实的模拟操作。</p>
-                    )}
                   </section>
                   <div className="scene-resets">
                     <button
                       onClick={() => {
+                        setSelected('');
                         pendingPreview = undefined;
                         demoEngine.normal();
                       }}
@@ -479,7 +381,7 @@ export function OperationStatus() {
   const { active } = useDemo();
   const navigate = useNavigate();
   const location = useLocation();
-  if (!active) return null;
+  if (!active?.scene) return null;
   const { scene, request, status } = active;
   const loading = status === 'loading';
   function edit() {
@@ -515,10 +417,7 @@ export function OperationStatus() {
       >
         {loading ? '◌' : status === 'empty' ? '○' : '!'}
       </span>
-      <small>
-        模拟{scene?.stage === 'global' ? '环境' : '交互'}
-        {active.preview ? ' · 直接预览' : ''}
-      </small>
+      <small>模拟{scene?.stage === 'global' ? '环境' : '交互'}</small>
       <h3>
         {loading
           ? (scene?.process ?? `正在${request.label}…`)
@@ -532,7 +431,7 @@ export function OperationStatus() {
             value={active.progress}
           />
           <p>
-            {active.preview ? '仅预览，不会自动提交。' : ''}正在等待模拟
+            {active.preview ? '选择场景不会自动提交。' : ''}正在等待模拟
             {request.stage === 'preparation' || request.stage === 'cleaning'
               ? '设备'
               : '服务'}
@@ -567,47 +466,58 @@ export function OperationStatus() {
   );
 }
 
-/** Native-sized status at the business surface; diagnostic wording stays in the console. */
+/** Existing list surfaces use their normal card typography; other failures stay in the console.
+ * Known device and camera faults render through their original business components. */
 export function PageOperationState({
   operations,
   emptyText,
-  retry,
 }: {
   operations: Operation[];
   emptyText?: string;
   retry?: () => void;
 }) {
   const { active } = useDemo();
-  if (!active || !operations.includes(active.request.operation)) return null;
-  const loading = active.status === 'loading';
-  const empty = active.status === 'empty';
+  if (
+    !active?.scene ||
+    !operations.includes(active.request.operation) ||
+    !['devices.load', 'formula.load', 'feeding.load'].includes(
+      active.request.operation,
+    )
+  )
+    return null;
   return (
     <div
-      className={empty ? 'mock-content-state' : 'mock-inline-state'}
+      className="flex flex-1 flex-col items-center justify-center px-8 text-center"
       role="status"
       data-testid="page-operation-state"
     >
-      <span>
-        {loading
-          ? '正在处理…'
-          : empty
+      <p className="text-[15px] font-medium" style={{ color: '#795238' }}>
+        {active.status === 'loading'
+          ? '加载中…'
+          : active.status === 'empty'
             ? (emptyText ?? '暂无数据')
-            : (active.scene?.name.replace('（模拟）', '') ??
-              '暂未完成，请重试')}
-      </span>
-      {!loading && (
-        <button
-          onClick={retry ?? demoEngine.retry}
-          style={{ marginLeft: 10, textDecoration: 'underline' }}
-        >
-          重试
-        </button>
-      )}
-      {loading && (
-        <button onClick={demoEngine.cancel} style={{ marginLeft: 10 }}>
-          取消
-        </button>
-      )}
+            : active.scene.name}
+      </p>
     </div>
+  );
+}
+
+/** Changes copy inside an existing product control, never adds a demo card or dialog. */
+export function OperationLabel({
+  operation,
+  children,
+}: {
+  operation: Operation;
+  children: React.ReactNode;
+}) {
+  const { active } = useDemo();
+  if (!active?.scene || active.request.operation !== operation)
+    return <>{children}</>;
+  return (
+    <>
+      {active.status === 'loading'
+        ? '处理中…'
+        : `${active.scene.name.replace('（模拟）', '')} · 重试`}
+    </>
   );
 }

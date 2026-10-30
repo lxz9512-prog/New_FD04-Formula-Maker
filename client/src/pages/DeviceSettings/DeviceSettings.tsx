@@ -1,5 +1,5 @@
 import { demoEngine } from '@/demo/engine';
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { demoSession } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from 'react';
@@ -21,7 +21,7 @@ import './device-settings.css';
 const DEVICE_THUMBNAIL = deviceImage;
 
 interface SettingItem {
-  label: string;
+  label: React.ReactNode;
   icon?: React.ReactNode;
   rightText?: string;
   rightBadge?: 'new';
@@ -99,7 +99,7 @@ const SettingSection: React.FC<{
       <div className="overflow-hidden rounded-[10px] bg-white">
         {visibleItems.map((item, index) => (
           <SettingRow
-            key={item.label}
+            key={index}
             item={item}
             isLast={index === visibleItems.length - 1}
           />
@@ -139,7 +139,7 @@ const DeviceSettings: React.FC = () => {
       onClick: () => navigate('/water-calibration'),
     },
     {
-      label: t('deviceSettings.nightLightAuto'),
+      label: <OperationLabel operation="settings.light">{t('deviceSettings.nightLightAuto')}</OperationLabel>,
       icon: (
         <Moon
           className="h-4 w-4"
@@ -174,7 +174,7 @@ const DeviceSettings: React.FC = () => {
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="flex h-full flex-col">
-        <PageOperationState operations={['settings.light']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

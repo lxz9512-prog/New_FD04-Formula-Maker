@@ -1,5 +1,5 @@
 import { demoEngine } from '@/demo/engine';
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -172,7 +172,7 @@ const DeviceDetail: React.FC = () => {
                     className="text-[16px] font-semibold"
                     style={{ color: '#1A1A1A' }}
                   >
-                    {t('deviceDetail.editDeviceName')}
+                    <OperationLabel operation="device.rename">{t('deviceDetail.editDeviceName')}</OperationLabel>
                   </span>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
@@ -184,7 +184,7 @@ const DeviceDetail: React.FC = () => {
                     <Check className="h-4 w-4 text-white" />
                   </motion.button>
                 </div>
-                <PageOperationState operations={['device.rename']} />
+
                 <input
                   ref={inputRef}
                   type="text"

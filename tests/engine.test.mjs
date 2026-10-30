@@ -186,3 +186,18 @@ test('current-stage reset does not clear other stages or persistent global envir
   x.engine.reset('devices');
   assert.ok(x.engine.getSnapshot().injections.global);
 });
+
+test('changing recovery policy updates the active selection without committing or reselecting', (t) => {
+  const scene = scenes.find((s) => s.id === 'formula.save');
+  const x = setup(t, scene);
+  x.engine.run(x.request, { previewId: scene.id });
+  x.engine.setRetry('failure');
+  x.engine.retry();
+  t.mock.timers.tick(1600);
+  assert.equal(x.commitCount(), 0);
+  assert.equal(x.engine.getSnapshot().active.scene.id, scene.id);
+  x.engine.setRetry('success');
+  x.engine.retry();
+  t.mock.timers.tick(30);
+  assert.equal(x.commitCount(), 1);
+});

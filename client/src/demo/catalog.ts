@@ -49,7 +49,14 @@ export interface Scene {
   message: string;
   recovery: string;
   presentation?:
-    'water' | 'powder' | 'quality' | 'chamber' | 'chamber-reminder';
+    | 'water'
+    | 'powder'
+    | 'quality'
+    | 'chamber'
+    | 'chamber-reminder'
+    | 'night-water'
+    | 'cleaning-incomplete'
+    | 'tube-reminder';
   retryLabel?: string;
   editLabel?: string;
 }
@@ -57,7 +64,7 @@ export const stages: Record<
   Stage,
   { name: string; path: string; trigger: string }
 > = {
-  devices: { name: '设备列表', path: '/', trigger: '进入页面或点击重新加载' },
+  devices: { name: '设备列表', path: '/', trigger: '在控制台选择设备列表场景' },
   preparation: {
     name: '设备调奶 / 出水',
     path: '/device',
@@ -101,7 +108,7 @@ export const stages: Record<
   global: {
     name: '全局环境',
     path: '/',
-    trigger: '下一次支持的模拟服务 / 设备操作；不改变浏览器真实网络或账号',
+    trigger: '选择后作用于本页支持的模拟操作；不改变浏览器真实网络或账号',
   },
 };
 const create = (
@@ -134,7 +141,7 @@ export const scenes: Scene[] = [
     ['devices.load'],
     'loading',
     '正在查找演示设备',
-    '取消等待后可重新加载。',
+    '取消等待后恢复初始设备列表。',
   ),
   create(
     'devices',
@@ -244,7 +251,7 @@ export const scenes: Scene[] = [
     ['formula.save'],
     'validation',
     '模拟校验服务拒绝该配比，请核对粉量和水量，尚未保存。',
-    '返回修改输入；再次保存按触发次数执行。重试成功表示模拟校验已通过。',
+    '返回修改输入或重试。重试成功表示模拟校验已通过。',
     { editLabel: '修改配比' },
   ),
   create(
@@ -291,8 +298,8 @@ export const scenes: Scene[] = [
     ['feeding.load'],
     'empty',
     '还没有喂养记录',
-    '可添加第一条记录，或重新加载恢复初始样例。',
-    { retryLabel: '重新加载', editLabel: '添加第一条记录' },
+    '可添加第一条记录，或恢复正常以显示初始样例。',
+    { retryLabel: '恢复记录', editLabel: '添加第一条记录' },
   ),
   create(
     'feeding',
@@ -340,7 +347,7 @@ export const scenes: Scene[] = [
     ['formula.load'],
     'error',
     '暂时无法读取配比列表，原配比未被修改。',
-    '重新加载恢复列表，或返回设备。',
+    '恢复正常以显示列表，或返回设备。',
   ),
   create(
     'formula',
@@ -429,6 +436,46 @@ export const scenes: Scene[] = [
     { editLabel: '返回修改输入' },
   ),
   create(
+    'preparation',
+    'chamber-reminder',
+    '混合仓清洁提醒',
+    ['preparation.start'],
+    'validation',
+    '混合仓使用达到提醒次数，复用原有可关闭提醒。',
+    '关闭提醒可继续；到期前可按指引清洁。',
+    { presentation: 'chamber-reminder' },
+  ),
+  create(
+    'preparation',
+    'night-water',
+    '夜间水量不足提醒',
+    ['preparation.start'],
+    'validation',
+    '复用原夜间缺水预提醒，不伪造已断水。',
+    '补水或关闭本场景后正常操作。',
+    { presentation: 'night-water' },
+  ),
+  create(
+    'preparation',
+    'cleaning-incomplete',
+    '清洁未完成',
+    ['preparation.start'],
+    'validation',
+    '复用原清洁未完成提示。',
+    '继续进入除垢准备流程，或返回设备列表。',
+    { presentation: 'cleaning-incomplete' },
+  ),
+  create(
+    'preparation',
+    'tube-reminder',
+    '管路清洁提醒',
+    ['preparation.start'],
+    'validation',
+    '复用原管路清洁提醒及去清洁入口。',
+    '关闭提醒继续使用，或进入管路清洁。',
+    { presentation: 'tube-reminder' },
+  ),
+  create(
     'global',
     'offline',
     '断网（模拟）',
@@ -470,7 +517,12 @@ const page = (
   note?: string,
 ): DemoPage => ({ title, stage, operations, action, note });
 export const pages: Record<string, DemoPage> = {
-  '/': page('设备列表', 'devices', ['devices.load'], '点击“重新加载设备”'),
+  '/': page(
+    '设备列表',
+    'devices',
+    ['devices.load'],
+    '选择场景查看设备列表状态，点击设备进入控制',
+  ),
   '/device': page(
     '调奶 / 出水控制',
     'preparation',
@@ -481,7 +533,7 @@ export const pages: Record<string, DemoPage> = {
     '配比列表',
     'formula',
     ['formula.load', 'formula.select'],
-    '重新加载列表，或点击配比卡片切换使用',
+    '选择场景查看列表状态，或点击配比卡片切换使用',
   ),
   '/formula-edit': page(
     '配比编辑',
@@ -529,7 +581,7 @@ export const pages: Record<string, DemoPage> = {
     '上传失败示例',
     'capture',
     ['capture.analyze'],
-    '点击原页面“重试”或控制台立即展示',
+    '选择本页对应场景，沿用原页面操作',
   ),
   '/capture-formula-step2/recognition-failed': page(
     '识别失败示例',
@@ -547,7 +599,7 @@ export const pages: Record<string, DemoPage> = {
     '喂养统计',
     'feeding',
     ['feeding.load'],
-    '重新加载记录；打开新增表单后自动匹配保存异常',
+    '查看喂养记录；打开新增表单后自动匹配保存异常',
   ),
   '/feeding-stats/add-record': page(
     '新增喂养记录',

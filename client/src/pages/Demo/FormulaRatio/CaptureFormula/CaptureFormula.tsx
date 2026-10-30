@@ -1,4 +1,6 @@
-import { useOperation, PageOperationState } from '@/demo/react';
+import CaptureFailureDialog from '../CaptureFailureDialog';
+import { demoEngine } from '@/demo/engine';
+import { useOperation, useDemo } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,8 +19,11 @@ const CaptureFormula: React.FC = () => {
     searchParams.get('source') === 'first-use' ? '?source=first-use' : '';
   const { t } = useTranslation();
   const [flashOn, setFlashOn] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const { active } = useDemo();
+  const current = active?.request.operation === 'capture.front' ? active : null;
+  const isUploading = current?.status === 'loading';
+  const uploadProgress = current?.progress ?? 0;
+  const uploadFailed = current?.status === 'error' && current.scene?.id === 'capture.upload';
   const [showSuccess, setShowSuccess] = useState(false);
 
   const captureOperation = useOperation({
@@ -30,9 +35,18 @@ const CaptureFormula: React.FC = () => {
 
 
   return (
-    <IPhoneFrame background="#ffffff">
+    <IPhoneFrame background="#ffffff" overlay={<CaptureFailureDialog
+      failureCopy={uploadFailed ? {
+        title: t('demo.captureFormulaStep2.uploadFailedTitle'),
+        description: t('demo.captureFormulaStep2.uploadFailedDescription'),
+        action: t('demo.captureFormulaStep2.retry'),
+      } : null}
+      onPrimary={demoEngine.retry}
+      onManual={() => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : ''))}
+      manualLabel={t('demo.captureFormulaStep2.enterManually')}
+    />}>
       <div className="flex h-full flex-col">
-      <PageOperationState operations={['capture.front']} />
+
 
         {/* Header */}
         <div className="fd06-page-nav">

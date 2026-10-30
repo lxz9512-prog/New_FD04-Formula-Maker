@@ -1,7 +1,9 @@
+import CaptureFailureDialog from '../CaptureFailureDialog';
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
+import { demoEngine } from '@/demo/engine';
 import { useLocation } from 'react-router-dom';
-import { useOperation, useDemo, PageOperationState } from '@/demo/react';
+import { useOperation, useDemo } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -46,7 +48,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognizeProgress, setRecognizeProgress] = useState(0);
-  const [failureMode, setFailureMode] = useState<CaptureFailureMode | null>(
+  const [staticFailureMode, setFailureMode] = useState<CaptureFailureMode | null>(
     initialFailure ?? null,
   );
 
@@ -60,17 +62,21 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
     edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')),
   });
   const { active } = useDemo();
-  useEffect(() => { if (active?.request.operation === 'capture.analyze') setFailureMode(null); }, [active?.id]);
+  const injectedFailure = active?.request.operation === 'capture.analyze' && active.status === 'error'
+    ? active.scene?.id === 'capture.upload' ? 'upload' : active.scene?.id === 'capture.recognition' ? 'recognition' : null : null;
+  const failureMode = injectedFailure ?? (active?.request.operation === 'capture.analyze' ? null : staticFailureMode);
+  const isUploadingNow = active?.request.operation === 'capture.analyze' && active.status === 'loading';
   const handleCapture = () => { setFailureMode(null); captureOperation(); };
 
 
   const handleFailurePrimaryAction = () => {
     if (failureMode === 'upload') {
       setFailureMode(null);
-      handleCapture();
+      if (injectedFailure) demoEngine.retry(); else handleCapture();
       return;
     }
 
+    demoEngine.cancel();
     navigate('/scan-formula' + firstUseSuffix);
   };
 
@@ -91,85 +97,15 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
       }[failureMode]
     : null;
 
-  const failureOverlay = (
-    <AnimatePresence>
-      {failureMode && failureCopy && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 z-[60] flex items-center justify-center bg-black/45 px-10"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 10 }}
-            transition={{ duration: 0.2 }}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="capture-failure-title"
-            className="w-full max-w-[300px] rounded-[20px] bg-white p-5"
-            style={{
-              boxShadow: '0 18px 40px rgba(34, 17, 34, 0.2)',
-            }}
-          >
-            <div
-              className="mb-4 flex h-10 w-10 items-center justify-center rounded-full"
-              style={{ background: 'hsl(24 67% 32% / 0.1)' }}
-            >
-              <AlertTriangle
-                className="h-5 w-5"
-                style={{ color: 'hsl(24, 67%, 32%)' }}
-              />
-            </div>
-            <h2
-              id="capture-failure-title"
-              className="mb-1.5 text-[18px] font-semibold"
-              style={{ color: '#221122' }}
-            >
-              {failureCopy.title}
-            </h2>
-            <p
-              className="mb-5 text-[13px] leading-relaxed"
-              style={{ color: 'hsl(300, 3%, 45%)' }}
-            >
-              {failureCopy.description}
-            </p>
-            <div className="space-y-2.5">
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                onClick={handleFailurePrimaryAction}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-white"
-                style={{ background: 'hsl(24, 67%, 32%)' }}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {failureCopy.action}
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                onClick={() => openFormulaEditor(navigate, editorLocation, manualEntryPath)}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold"
-                style={{
-                  background: 'hsl(39, 40%, 96%)',
-                  color: '#221122',
-                }}
-              >
-                <Keyboard className="h-3.5 w-3.5" />
-                {t('demo.captureFormulaStep2.enterManually')}
-              </motion.button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  const failureOverlay = <CaptureFailureDialog failureCopy={failureCopy}
+    onPrimary={handleFailurePrimaryAction}
+    onManual={() => openFormulaEditor(navigate, editorLocation, manualEntryPath)}
+    manualLabel={t('demo.captureFormulaStep2.enterManually')} />;
 
   return (
     <IPhoneFrame background="#ffffff" overlay={failureOverlay}>
       <div className="relative flex h-full flex-col">
-      <PageOperationState operations={['capture.analyze']} />
+
 
         {/* Header */}
         <div className="fd06-page-nav">
@@ -197,7 +133,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
         <div className="relative flex-1 overflow-hidden">
           {/* Upload Progress */}
           <AnimatePresence>
-            {isUploading && (
+            {isUploadingNow && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -303,7 +239,7 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
                   </div>
                   <span className="text-[16px]" style={{ color: '#21161d' }}>
                     {t('demo.captureFormulaStep2.uploading', {
-                      progress: uploadProgress,
+                      progress: active?.progress ?? 0,
                     })}
                   </span>
                 </div>

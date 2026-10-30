@@ -64,7 +64,7 @@ const formatLastFormulaTime = (
 
 const DeviceList: React.FC = () => {
   const navigate = useNavigate();
-  const { loaded, reload } = useLoadOperation('devices.load', 'devices');
+  const { loaded } = useLoadOperation('devices.load', 'devices');
   const { t, language } = useTranslation();
   const { unit } = useVolumeUnit();
 
@@ -105,10 +105,10 @@ const DeviceList: React.FC = () => {
             </motion.button>
           </div>
 
-          <button className="mock-list-reload" onClick={reload}>重新加载设备</button>
+
           <PageOperationState operations={['devices.load']} emptyText="还没有可用设备" />
           {/* Scrollable Content */}
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 pt-5 pb-28" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 pt-5 pb-28" style={{ display: loaded ? undefined : 'none' }}>
             {/* Baby Monitor Card */}
             <div
               className="rounded-[20px] p-4"

@@ -1,4 +1,4 @@
-import { useOperation, PageOperationState } from '@/demo/react';
+import { useOperation, OperationLabel } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -60,7 +60,7 @@ const PowderWater: React.FC = () => {
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="relative flex h-full flex-col">
-        <PageOperationState operations={['resources.save']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -210,7 +210,7 @@ const PowderWater: React.FC = () => {
                 <span className="text-[15px] font-semibold text-white">{t("powderWater.saved")}</span>
               </>
             ) : (
-              <span className="text-[15px] font-semibold text-white">{t("common.save")}</span>
+              <span className="text-[15px] font-semibold text-white"><OperationLabel operation="resources.save">{t("common.save")}</OperationLabel></span>
             )}
           </motion.button>
         </div>

@@ -1,4 +1,3 @@
-// PLAYWRIGHT_MODULE is optional for an existing local browser-tool cache.
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || 'playwright'
 );
@@ -6,223 +5,296 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1512, height: 1000 } });
-const errors = [];
+const errors = [],
+  passes = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.route('https://**/*', (route) => route.abort());
 const url = process.env.DEMO_URL || 'http://127.0.0.1:4174/';
-fs.mkdirSync('test-results', { recursive: true });
 const consoleUI = page.getByRole('complementary', { name: '场景控制台' });
-const dialog = page.getByTestId('operation-status');
 const phone = page.locator('[data-device-screen]');
-const passes = [];
+const result = page.getByTestId('operation-status');
+fs.mkdirSync('test-results', { recursive: true });
+async function go(path) {
+  await page.evaluate((p) => (location.hash = p), path);
+  await page.waitForTimeout(250);
+}
+async function open() {
+  if (!(await consoleUI.isVisible()))
+    await page.getByRole('button', { name: '打开场景控制台' }).click();
+}
+async function choose(id) {
+  await open();
+  await consoleUI
+    .getByRole('button', {
+      name: id.startsWith('global.') ? '全局环境' : '本页异常',
+      exact: true,
+    })
+    .click();
+  await consoleUI.getByLabel('本页异常', { exact: true }).selectOption(id);
+  await result.waitFor();
+}
+async function normal() {
+  await open();
+  await consoleUI
+    .getByRole('button', { name: '恢复正常', exact: true })
+    .click();
+}
+async function reset() {
+  await open();
+  await consoleUI
+    .getByRole('button', { name: '重置整个 Demo', exact: true })
+    .click();
+  await page.waitForTimeout(300);
+}
+async function storage(key) {
+  return page.evaluate(
+    (k) => localStorage.getItem('New_FD04_demo_v1:' + k),
+    key,
+  );
+}
 async function check(name, fn) {
-  if (process.env.CHECK_FILTER && !name.includes(process.env.CHECK_FILTER))
-    return;
   await fn();
   passes.push(name);
   console.log('PASS', name);
 }
-async function go(path) {
-  await page.evaluate((path) => {
-    location.hash = path;
-  }, path);
-  await page.waitForTimeout(300);
-}
-async function consoleOpen() {
-  if (!(await consoleUI.isVisible()))
-    await page.getByRole('button', { name: '打开场景控制台' }).click();
-}
-async function select(
-  scene,
-  { mode = 'next', policy = 'once', retry = 'success' } = {},
-) {
-  await consoleOpen();
-  const group = scene.split('.')[0];
-  if (group === 'global') await consoleUI.getByRole('button', {name: '全局环境', exact:true}).click();
-  else {
-    await consoleUI.getByRole('button', {name:'本页异常', exact:true}).click();
-    if (mode === 'preview' && !(await consoleUI.locator(`option[value="${scene}"]`).count())) {
-      const paths = {devices:'/', preparation:'/device', capture:'/capture-formula-step2', formula:'/formula-edit?mode=recognition', sync:'/formula-ratio-sync', cleaning:'/device-cleaning', feeding: scene === 'feeding.save' ? '/feeding-stats/add-record' : '/feeding-stats'};
-      const exactPaths = {'formula.load':'/formula-ratio','formula.empty':'/formula-ratio','formula.select':'/formula-ratio','settings.rename':'/device-detail','settings.light':'/device-settings','settings.notifications':'/notification-settings','settings.permission':'/notification-settings','settings.resources':'/powder-water','baby.save':'/add-baby','baby.validation':'/add-baby'};
-      await go(exactPaths[scene] || paths[group]);
-    }
-  }
-  await consoleUI.getByLabel('本页异常', {exact:true}).selectOption(scene);
-  const details = consoleUI.locator('.scene-advanced');
-  if (!(await details.getAttribute('open') !== null)) await details.locator('summary').click();
-  await consoleUI.getByLabel('触发次数').selectOption(policy);
-  await consoleUI.getByLabel('重试策略').selectOption(retry);
-  await consoleUI.getByRole('button', {name: mode === 'preview' ? '立即展示' : '操作后触发', exact: true}).click();
-}
-async function resetAll() {
-  await consoleOpen();
-  await consoleUI
-    .getByRole('button', { name: '重置整个 Demo', exact: true })
-    .click();
-  await page.waitForTimeout(1300);
-}
-async function storage(key) {
-  return page.evaluate(
-    (key) => localStorage.getItem('New_FD04_demo_v1:' + key),
-    key,
-  );
-}
-async function failVisible(name) {
-  await consoleOpen();
-  await dialog.getByRole('heading', { name, exact: true }).waitFor();
-}
-async function dismiss() {
-  if (await dialog.isVisible())
-    await dialog
-      .getByRole('button', { name: '取消，返回当前页面', exact: true })
-      .click();
-}
 try {
   await page.goto(url);
-  await page.waitForTimeout(1800);
-  await check('normal device list boots without injected errors', async () => {
-    assert.ok(await phone.getByText('FD04', { exact: true }).isVisible());
-    assert.equal(await dialog.count(), 0);
-  });
+  await phone.getByText('FD04', { exact: true }).waitFor();
   await check(
-    'left console sits between directory and phone; original right descriptions restored; no injected product dialogs',
+    'normal lists are immediate; no added reload controls or trigger modes',
     async () => {
-      const directory = await page.locator('.scene-directory').boundingBox();
-      const control = await consoleUI.boundingBox();
-      const device = await page.locator('[data-device-frame]').boundingBox();
-      const info = await page
-        .getByRole('complementary', { name: '交互说明', exact: true })
-        .boundingBox();
-      assert.ok(directory.x + directory.width <= control.x);
-      assert.ok(control.x + control.width <= device.x);
-      assert.ok(device.x + device.width <= info.x);
-      for (const width of [1200, 1280, 1512]) {
-        await page.setViewportSize({ width, height: 1000 });
-        await page.waitForTimeout(400);
-        const right = await page
-          .getByRole('complementary', { name: '交互说明', exact: true })
-          .boundingBox();
-        const frame = await page.locator('[data-device-frame]').boundingBox();
-        assert.ok(
-          right.x + right.width <= width + 1,
-          `right panel fits ${width}`,
-        );
-        assert.ok(frame.x + frame.width <= right.x, `phone fits ${width}`);
-      }
-      await select('devices.failure', { mode: 'preview' });
-      await failVisible('设备列表加载失败');
-      assert.equal(await phone.getByRole('dialog').count(), 0);
+      assert.equal(await result.count(), 0);
       assert.equal(
-        await phone.locator('[data-testid="operation-status"]').count(),
+        await page
+          .getByRole('button', {
+            name: /立即展示|立即演示|操作后触发|稍后触发|重新加载设备/,
+          })
+          .count(),
         0,
       );
-      assert.equal(await page.locator('.mock-operation-overlay').count(), 0);
-      await consoleUI
-        .getByRole('button', { name: '恢复正常', exact: true })
-        .click();
-      await phone.getByRole('button', { name: '重新加载设备' }).click();
-      await phone.getByText('FD04', { exact: true }).waitFor();
-      await consoleUI.getByRole('button', { name: '收起控制台' }).click();
-      await consoleUI.getByRole('button', { name: '展开控制台' }).waitFor();
-      await consoleUI.getByRole('button', { name: '展开控制台' }).click();
+      assert.equal(await consoleUI.getByLabel('触发次数').count(), 0);
+      for (const path of ['/formula-ratio', '/feeding-stats']) {
+        await go(path);
+        assert.equal(
+          await phone.getByRole('button', { name: /重新加载/ }).count(),
+          0,
+        );
+        assert.equal(
+          await phone.getByTestId('page-operation-state').count(),
+          0,
+        );
+      }
+      await go('/');
     },
   );
   await check(
-    'one-shot failure waits and remains active while console hidden; retry recovers',
+    'left console layout and original right interaction notes remain',
     async () => {
-      await select('devices.failure');
-      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
-      await phone.getByRole('button', { name: '重新加载设备' }).click();
-      await consoleOpen();
-      await dialog.getByRole('progressbar').waitFor();
-      assert.equal(
-        await phone.getByText('FD04', { exact: true }).isVisible(),
-        false,
-      );
-      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
-      await phone.getByRole('button', { name: '重新加载设备' }).focus();
-      await page.waitForTimeout(1550);
-      assert.equal(await consoleUI.isVisible(), false);
+      for (const width of [1200, 1280, 1512]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await page.waitForTimeout(600);
+        const directory = await page.locator('.scene-directory').boundingBox(),
+          control = await consoleUI.boundingBox(),
+          device = await page.locator('[data-device-frame]').boundingBox(),
+          info = await page
+            .getByRole('complementary', { name: '交互说明', exact: true })
+            .boundingBox();
+        assert.ok(directory.x + directory.width <= control.x);
+        assert.ok(control.x + control.width <= device.x);
+        assert.ok(device.x + device.width <= info.x);
+        assert.ok(info.x + info.width <= width + 1);
+      }
+    },
+  );
+  await check(
+    'selection instantly changes list and survives hiding; normal restores without loading',
+    async () => {
+      await choose('devices.failure');
       assert.ok(
-        await phone
-          .getByRole('button', { name: '重新加载设备' })
-          .evaluate((el) => el === document.activeElement),
+        await phone.getByText('设备列表加载失败', { exact: true }).isVisible(),
       );
-      assert.equal(await phone.getByRole('dialog').count(), 0);
-      await failVisible('设备列表加载失败');
-      await consoleOpen();
+      assert.equal(await phone.getByRole('alertdialog').count(), 0);
+      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
       assert.ok(
-        await consoleUI.getByText('无待触发场景 · 当前场景已触发').isVisible(),
+        await phone.getByText('设备列表加载失败', { exact: true }).isVisible(),
       );
-      await dialog.getByRole('button', { name: '重试', exact: true }).click();
-      await dialog.waitFor({ state: 'hidden' });
+      await open();
+      await consoleUI.getByLabel('本页异常', { exact: true }).selectOption('');
+      assert.ok(await phone.getByText('FD04', { exact: true }).isVisible());
+      assert.equal(await result.count(), 0);
+      await choose('devices.loading');
+      assert.ok(await phone.getByText('加载中…', { exact: true }).isVisible());
+      await normal();
       assert.ok(await phone.getByText('FD04', { exact: true }).isVisible());
     },
   );
   await check(
-    'every local scene supports non-committing direct preview',
+    'all 37 rules select in place without writing data or extra product status widgets',
     async () => {
-      const cases = [
-        'devices.loading',
-        'devices.empty',
-        'devices.failure',
-        'preparation.water',
-        'preparation.powder',
-        'preparation.timeout',
-        'capture.permission',
-        'capture.upload',
-        'capture.recognition',
-        'capture.loading',
-        'formula.save',
-        'formula.validation',
-        'sync.failure',
-        'sync.timeout',
-        'cleaning.interrupt',
-        'cleaning.timeout',
-        'feeding.empty',
-        'feeding.load',
-        'feeding.save',
+      const groups = [
+        ['/', ['devices.loading', 'devices.empty', 'devices.failure']],
+        [
+          '/device',
+          [
+            'preparation.water',
+            'preparation.powder',
+            'preparation.timeout',
+            'preparation.quality',
+            'preparation.chamber',
+            'preparation.chamber-reminder',
+            'preparation.night-water',
+            'preparation.cleaning-incomplete',
+            'preparation.tube-reminder',
+          ],
+        ],
+        [
+          '/capture-formula-step2',
+          [
+            'capture.permission',
+            'capture.upload',
+            'capture.recognition',
+            'capture.loading',
+          ],
+        ],
+        [
+          '/formula-edit?mode=recognition',
+          ['formula.save', 'formula.validation'],
+        ],
+        ['/formula-ratio', ['formula.load', 'formula.empty', 'formula.select']],
+        ['/formula-ratio-sync', ['sync.failure', 'sync.timeout']],
+        ['/device-cleaning', ['cleaning.interrupt', 'cleaning.timeout']],
+        ['/feeding-stats', ['feeding.empty', 'feeding.load']],
+        ['/feeding-stats/add-record', ['feeding.save']],
+        ['/device-detail', ['settings.rename']],
+        ['/device-settings', ['settings.light']],
+        [
+          '/notification-settings',
+          ['settings.notifications', 'settings.permission'],
+        ],
+        ['/powder-water', ['settings.resources']],
+        ['/add-baby', ['baby.save', 'baby.validation']],
+        ['/', ['global.offline', 'global.weak']],
       ];
-      for (const scene of cases) {
-        await select(scene, { mode: 'preview' });
-        await dialog.waitFor();
-        assert.equal(await storage('feeding_history'), null);
-        assert.equal(await storage('feeding_records'), null);
-        if (scene === 'preparation.water')
+      let count = 0;
+      for (const [path, ids] of groups) {
+        await go(path);
+        for (const id of ids) {
+          const before = page.url(),
+            data = await page.evaluate(() =>
+              JSON.stringify({ ...localStorage }),
+            );
+          await choose(id);
+          count++;
+          assert.equal(page.url(), before, id);
+          assert.equal(
+            await page.evaluate(() => JSON.stringify({ ...localStorage })),
+            data,
+            id + ' must not save',
+          );
+          assert.equal(await phone.getByTestId('operation-status').count(), 0);
+          assert.equal(
+            await page
+              .locator('.mock-inline-state, .mock-operation-overlay')
+              .count(),
+            0,
+          );
+          await normal();
+        }
+      }
+      assert.equal(count, 37);
+    },
+  );
+  await check(
+    'eight original device exception designs are projected onto normal control page',
+    async () => {
+      await go('/device');
+      const originalPaths = {
+        water: '/water-low-error',
+        powder: '/powder-error',
+        quality: '/water-quality-error',
+        chamber: '/powder-clean-due',
+        'chamber-reminder': '/powder-clean-reminder',
+        'night-water': '/night-water-low',
+        'cleaning-incomplete': '/cleaning-incomplete',
+        'tube-reminder': '/tube-clean-reminder',
+      };
+      for (const [key, path] of Object.entries(originalPaths)) {
+        await go(path);
+        // Native control alert and cleaning-incomplete dialog match original route text.
+        const original = await phone
+          .locator('.control-alert-overlay')
+          .allTextContents();
+        await go('/device');
+        await choose('preparation.' + key);
+        const projected = await phone
+          .locator('.control-alert-overlay')
+          .allTextContents();
+        assert.deepEqual(projected, original, key);
+        if (key === 'cleaning-incomplete') {
+          await phone
+            .getByRole('button', { name: '继续', exact: true })
+            .waitFor();
+        }
+        if (key === 'water')
           await page.screenshot({ path: 'test-results/water-error.png' });
-        await consoleUI
-          .getByRole('button', { name: '恢复正常', exact: true })
-          .click();
-        assert.equal(await dialog.count(), 0);
+        if (key === 'tube-reminder') {
+          await phone.locator('.control-alert-action').click();
+          await page.waitForURL('**/#/device-cleaning');
+        } else await normal();
       }
     },
   );
-  await resetAll();
   await check(
-    'formula save failure keeps draft, retries can continue failing, then succeeds once',
+    'front and back use original capture failure dialog and working retry / retake',
     async () => {
-      await go('/formula-edit?mode=manual');
+      for (const [path, target] of [
+        ['/capture-formula', '/capture-formula-back-side'],
+        ['/capture-formula-step2', '/formula-edit?mode=recognition'],
+      ]) {
+        await go(path);
+        await choose('capture.upload');
+        const native = phone.getByRole('alertdialog');
+        await native.waitFor();
+        await native.getByRole('button', { name: '重试', exact: true }).click();
+        await page.waitForURL('**/#' + target);
+      }
+      await go('/capture-formula-step2');
+      await choose('capture.recognition');
+      await phone
+        .getByRole('alertdialog')
+        .getByRole('button', { name: '重拍' })
+        .click();
+      await page.waitForURL('**/#/scan-formula');
+      await go('/capture-formula-step2');
+      await choose('capture.recognition');
+      await phone
+        .getByRole('alertdialog')
+        .getByRole('button', { name: /手动/ })
+        .click();
+      await page.waitForURL('**/#/formula-edit?mode=manual');
+    },
+  );
+  await check(
+    'retry policy applies to original App action, preserves draft and commits only on success',
+    async () => {
+      await reset();
+      await go('/formula-edit?mode=recognition');
       const brand = phone.locator('input').first();
       await brand.fill('Test Brand');
-      await select('formula.save', { retry: 'failure' });
+      await choose('formula.save');
+      await consoleUI.getByLabel('重试策略').selectOption('failure');
       await phone
-        .getByRole('button', { name: /确认|保存/ })
+        .getByRole('button', { name: /确认|保存|配比保存失败/ })
         .last()
         .click();
-      await failVisible('配比保存失败');
+      await result
+        .getByRole('heading', { name: '配比保存失败', exact: true })
+        .waitFor();
       assert.equal(await storage('formula_profile'), null);
-      await dialog.getByRole('button', { name: '重试', exact: true }).click();
-      await failVisible('配比保存失败');
-      assert.equal(await storage('formula_profile'), null);
-      await dialog
-        .getByRole('button', { name: '返回修改输入', exact: true })
-        .click();
       assert.equal(await brand.inputValue(), 'Test Brand');
-      await consoleUI
-        .getByRole('button', { name: '恢复正常', exact: true })
-        .click();
+      await consoleUI.getByLabel('重试策略').selectOption('success');
       await phone
-        .getByRole('button', { name: /确认|保存/ })
+        .getByRole('button', { name: /确认|保存|配比保存失败/ })
         .last()
         .click();
       await page.waitForURL('**/#/formula-ratio');
@@ -230,291 +302,37 @@ try {
         JSON.parse(await storage('formula_profile')).brand,
         'Test Brand',
       );
-      await phone.getByText(/Test Brand/).first().waitFor();
     },
   );
   await check(
-    'preparation failure creates no successful result; retry commits once and preserves selection',
-    async () => {
-      await go('/device');
-      await select('preparation.water');
-      const start = phone.getByRole('button', { name: '开始', exact: true });
-      await start.first().click();
-      await failVisible('水量不足');
-      assert.equal(await storage('feeding_history'), null);
-      assert.equal(await storage('mixing_chamber_count'), null);
-      await dialog
-        .getByRole('button', { name: '已补水，重新开始', exact: true })
-        .click();
-      await page.waitForURL('**/#/formula-result');
-      assert.equal(JSON.parse(await storage('feeding_history')).length, 1);
-      assert.equal(await storage('mixing_chamber_count'), '1');
-    },
-  );
-  await check(
-    'missing baby prompt and profile creation remain usable',
-    async () => {
-      await phone
-        .getByRole('button', { name: /知道了|记录|确认/ })
-        .first()
-        .click();
-      await page.waitForURL('**/#/no-baby');
-      await phone
-        .getByRole('button', { name: '添加宝宝', exact: true })
-        .click();
-      await page.waitForURL('**/#/add-baby');
-      await phone.getByLabel('宝宝昵称').fill('Demo Baby');
-      await phone.getByLabel('出生日期').fill('2026-01-01');
-      await phone.getByRole('button', { name: '保存', exact: true }).click();
-      await page.waitForURL('**/#/device');
-      assert.ok(await storage('fd04_baby_profile'));
-    },
-  );
-  await check(
-    'camera permission and upload failure stop navigation; recover via manual or retry',
-    async () => {
-      await go('/capture-formula-step2');
-      await select('capture.permission');
-      await phone
-        .getByRole('button', { name: /拍摄|拍照/ })
-        .last()
-        .click();
-      await failVisible('相机权限拒绝（模拟）');
-      await dialog.getByRole('button', { name: '改为手动输入' }).click();
-      await page.waitForURL('**/#/formula-edit?mode=manual');
-      await go('/capture-formula-step2');
-      await select('capture.upload');
-      await phone
-        .getByRole('button', { name: /拍摄|拍照/ })
-        .last()
-        .click();
-      await failVisible('照片上传失败');
-      await dialog.getByRole('button', { name: '重试', exact: true }).click();
-      await page.waitForURL('**/#/formula-edit?mode=recognition');
-    },
-  );
-  await check(
-    'feeding save failure keeps remarks and saves exactly one record after retry',
+    'recovery, reset and navigation never replay pending writes',
     async () => {
       await go('/feeding-stats/add-record');
-      await phone.locator('textarea').fill('preserved remark');
-      await select('feeding.save');
-      await phone.getByRole('button', { name: /保存记录/ }).click();
-      await failVisible('喂养记录保存失败');
-      assert.equal(await storage('feeding_records'), null);
-      await dialog.getByRole('button', { name: '返回修改输入' }).click();
-      assert.equal(
-        await phone.locator('textarea').inputValue(),
-        'preserved remark',
-      );
-      await phone.getByRole('button', { name: /保存记录/ }).click();
-      await page.waitForURL('**/#/feeding-stats');
-      await page.waitForTimeout(1200);
-      assert.equal(JSON.parse(await storage('feeding_records')).length, 1);
-    },
-  );
-  await check(
-    'inline feeding sheet exposes save scenes and preserves draft on failure',
-    async () => {
-      await go('/feeding-stats');
-      await page.waitForTimeout(1200);
-      await phone
-        .getByRole('button', { name: '添加喂养记录', exact: true })
-        .click();
-      await phone.locator('textarea').fill('inline draft');
-      await select('feeding.save');
+      await phone.locator('textarea').fill('kept draft');
       const before = await storage('feeding_records');
-      await phone
-        .getByRole('button', { name: '保存记录', exact: true })
-        .click();
-      await failVisible('喂养记录保存失败');
+      await choose('feeding.save');
+      await normal();
+      assert.equal(await phone.locator('textarea').inputValue(), 'kept draft');
+      await page.waitForTimeout(1600);
       assert.equal(await storage('feeding_records'), before);
-      await dialog
-        .getByRole('button', { name: '返回修改输入', exact: true })
-        .click();
-      assert.equal(
-        await phone.locator('textarea').inputValue(),
-        'inline draft',
-      );
-    },
-  );
-  await check(
-    'sync failure preserves selected ratio, retry commits and edit returns to drawer',
-    async () => {
-      await go('/formula-ratio-sync');
-      await page
-        .getByRole('button', { name: '选择配比同步', exact: true })
-        .click();
-      await page.getByRole('button', { name: /Kabrita/ }).click();
-      const before = await storage('formula_profiles');
-      await select('sync.failure');
-      await page.getByRole('button', { name: '确认同步', exact: true }).click();
-      await failVisible('配比同步失败');
-      assert.equal(await storage('formula_profiles'), before);
-      await page.screenshot({ path: 'test-results/sync-error.png' });
-      await dialog.getByRole('button', { name: '重试', exact: true }).click();
-      await dialog.waitFor({ state: 'hidden' });
-      await page.waitForTimeout(300);
-      assert.equal(
-        JSON.parse(await storage('formula_profiles')).find(
-          (x) => x.id === 'kabrita',
-        ).powderPerScoop,
-        9.5,
-      );
-      await go('/');
-      await page.waitForTimeout(1100);
-      await go('/formula-ratio-sync');
-      await page
-        .getByRole('button', { name: '选择配比同步', exact: true })
-        .click();
-      await page.getByRole('button', { name: '新增', exact: true }).click();
-      await page.waitForURL('**/#/formula-edit?mode=manual');
-      await phone.getByRole('button').first().click();
-      await page.waitForURL('**/#/formula-ratio-sync');
-      await page.getByText('选择要同步的配比', { exact: true }).waitFor();
-    },
-  );
-  await check(
-    'cleaning interrupted start retries into original two-stage normal cleaning; reset stops timer',
-    async () => {
-      await go('/device-cleaning');
-      await phone.getByRole('button', { name: /除垢/ }).first().click();
-      await phone.getByRole('button', { name: '继续', exact: true }).click();
-      await phone.getByText('准备除垢溶液', { exact: true }).waitFor();
-      await page.waitForTimeout(350);
-      await phone.getByRole('button', { name: '继续', exact: true }).click();
-      await select('cleaning.interrupt');
-      await phone
-        .getByRole('button', { name: '开始清洁', exact: true })
-        .click();
-      await failVisible('清洁操作中断（模拟）');
-      assert.equal(await storage('cleaning_complete'), null);
-      await dialog
-        .getByRole('button', { name: '重新检查并开始', exact: true })
-        .click();
-      await dialog.waitFor({ state: 'hidden' });
-      await page.waitForTimeout(7300);
-      await phone.getByRole('button', { name: '继续', exact: true }).click();
-      await phone
-        .getByRole('button', { name: '开始清洁', exact: true })
-        .click();
+      await choose('global.weak');
+      await consoleUI.getByRole('button', { name: '重置当前环节' }).click();
       await page.waitForTimeout(5300);
-      await phone.getByText('清洁完成', { exact: true }).first().waitFor();
-      await consoleUI.getByRole('button', { name: '重置当前环节' }).click();
-      await phone.getByRole('button', { name: /除垢/ }).first().click();
-      await phone.getByRole('button', { name: '继续', exact: true }).click();
-      await phone.getByText('准备除垢溶液', { exact: true }).waitFor();
-      await page.waitForTimeout(350);
-      await phone.getByRole('button', { name: '继续', exact: true }).click();
-      await phone
-        .getByRole('button', { name: '开始清洁', exact: true })
-        .click();
-      await dialog.waitFor({ state: 'hidden' });
-      await consoleUI.getByRole('button', { name: '重置当前环节' }).click();
-      await page.waitForTimeout(7400);
-      await phone.getByRole('button', { name: /除垢/ }).first().waitFor();
-    },
-  );
-  await check(
-    'reset during preparation cancels pending writes and returns to initial stage',
-    async () => {
-      await go('/device');
-      const before = await storage('feeding_history');
-      await phone
-        .getByRole('button', { name: '开始', exact: true })
-        .first()
-        .click();
-      await dialog.waitFor();
-      await consoleUI.getByRole('button', { name: '重置当前环节' }).click();
-      await page.waitForTimeout(4800);
-      assert.equal(await storage('feeding_history'), before);
-      assert.equal(await storage('mixing_chamber_count'), null);
-      assert.ok(page.url().endsWith('#/device'));
-    },
-  );
-  await check(
-    'global environment has priority and retry / restore does not auto-replay',
-    async () => {
-      await select('global.offline', {
-        policy: 'persistent',
-        retry: 'failure',
-      });
-      await consoleUI.getByRole('button', {name:'本页异常', exact:true}).click();
-      assert.equal(
-        await consoleUI
-          .getByRole('button', { name: '操作后触发', exact: true })
-          .isEnabled(),
-        false,
-      );
-      await go('/feeding-stats/add-record');
-      await phone.getByRole('button', { name: /保存记录/ }).click();
-      await failVisible('断网（模拟）');
-      const before = await storage('feeding_records');
-      await consoleUI
-        .getByRole('button', { name: '恢复正常', exact: true })
-        .click();
-      await page.waitForTimeout(2000);
-      assert.equal(await storage('feeding_records'), before);
-    },
-  );
-  await check(
-    'global direct preview and weak-network wait can be cancelled without writes',
-    async () => {
-      await select('global.offline', { mode: 'preview' });
-      await failVisible('断网（模拟）');
-      await consoleUI
-        .getByRole('button', { name: '恢复正常', exact: true })
-        .click();
-      await go('/feeding-stats/add-record');
-      const before = await storage('feeding_records');
-      await select('global.weak');
-      await phone
-        .getByRole('button', { name: '保存记录', exact: true })
-        .click();
-      await dialog.getByRole('progressbar').waitFor();
-      await page.waitForTimeout(1000);
-      assert.equal(await storage('feeding_records'), before);
-      await dialog.getByRole('button', { name: '取消等待' }).click();
-      await page.waitForTimeout(4500);
-      assert.equal(await storage('feeding_records'), before);
-    },
-  );
-  await check(
-    'navigation invalidates old request; reload defaults normal; original storage is untouched',
-    async () => {
+      assert.equal(await storage('feeding_records'), null);
       await go('/formula-edit?mode=recognition');
       await phone
-        .getByRole('button', { name: /确认|保存/ })
+        .getByRole('button', { name: /确认|保存|配比保存失败/ })
         .last()
         .click();
       await go('/');
-      await page.waitForTimeout(2000);
-      assert.ok(page.url().endsWith('#/'));
-      await page.evaluate(() =>
-        localStorage.setItem('formula_profile', 'original-sentinel'),
-      );
-      await select('devices.failure', { policy: 'persistent' });
-      await page.reload();
       await page.waitForTimeout(1800);
-      assert.equal(
-        await page.evaluate(() => localStorage.getItem('formula_profile')),
-        'original-sentinel',
-      );
-      assert.ok(
-        await consoleUI.getByText('无待触发场景 · 正常模式').isVisible(),
-      );
-      await resetAll();
-      assert.equal(await storage('formula_profile'), null);
-      assert.equal(
-        await page.evaluate(() => localStorage.getItem('formula_profile')),
-        'original-sentinel',
-      );
+      assert.ok(page.url().endsWith('#/'));
     },
   );
   await check(
-    'normal first-use photo setup and preparation complete end to end',
+    'normal first-use camera, save and preparation still complete end to end',
     async () => {
-      await resetAll();
+      await reset();
       await go('/device');
       await phone
         .getByRole('button', { name: '添加粉水配比', exact: true })
@@ -537,92 +355,61 @@ try {
         '**/#/formula-edit?mode=recognition&source=first-use',
       );
       await phone
-        .getByRole('button', { name: /确认|保存/ })
+        .getByRole('button', { name: /确认|保存|配比保存失败/ })
         .last()
         .click();
       await page.waitForURL('**/#/device');
-      assert.equal(await storage('formula_profile_configured'), 'true');
       await phone
         .getByRole('button', { name: '开始', exact: true })
         .first()
         .click();
       await page.waitForURL('**/#/formula-result');
       assert.equal(JSON.parse(await storage('feeding_history')).length, 1);
-      await resetAll();
     },
   );
-  await check('page-specific exceptions preview in place and recover without artificial dialogs', async () => {
-    for (const scene of ['preparation.quality','preparation.chamber','formula.load','formula.empty','formula.select','settings.rename','settings.light','settings.notifications','settings.permission','settings.resources','baby.save','baby.validation']) {
-      await select(scene, {mode:'preview'});
-      await dialog.waitFor();
-      const beforeUrl = page.url();
-      assert.ok(await phone.getByTestId('page-operation-state').count(), scene);
-      assert.equal(await phone.getByRole('alertdialog').count(), 0);
-      await consoleUI.getByRole('button', {name:'恢复正常',exact:true}).click();
-      assert.equal(page.url(), beforeUrl, 'preview / restore stays on exact page');
-    }
-    await go('/device-detail');
-    await select('settings.rename', {mode:'preview'});
-    const name = phone.getByLabel('设备名称', {exact:true});
-    await name.fill('My FD04');
-    await dialog.getByRole('button', {name:'返回修改输入'}).click();
-    await select('settings.rename');
-    await phone.getByRole('button', {name:'保存设备名称',exact:true}).click();
-    await failVisible('设备名称保存失败');
-    assert.equal(await name.inputValue(), 'My FD04');
-    await dialog.getByRole('button', {name:'重试',exact:true}).click();
-    await dialog.waitFor({state:'hidden'});
-    await phone.getByText('My FD04', {exact:true}).waitFor();
-    await go('/notification-settings');
-    const firstSwitch = phone.getByRole('switch').first();
-    const initial = await firstSwitch.getAttribute('aria-checked');
-    await select('settings.notifications');
-    await firstSwitch.click();
-    await failVisible('提醒设置保存失败');
-    assert.equal(await firstSwitch.getAttribute('aria-checked'), initial);
-    await dialog.getByRole('button', {name:'重试',exact:true}).click();
-    await dialog.waitFor({state:'hidden'});
-    assert.notEqual(await firstSwitch.getAttribute('aria-checked'), initial);
-    await go('/scan-formula');
-    assert.equal(await consoleUI.getByLabel('本页异常', {exact:true}).locator('option').count(), 1);
-    await select('capture.permission');
-    await phone.getByRole('button', {name:'开始拍摄',exact:true}).click();
-    await failVisible('相机权限拒绝（模拟）');
-    assert.ok(page.url().endsWith('#/scan-formula'));
-    await dialog.getByRole('button', {name:'模拟允许并重试'}).click();
-    await page.waitForURL('**/#/capture-formula');
-    await go('/faq');
-    assert.equal(await consoleUI.getByLabel('本页异常', {exact:true}).count(), 0);
-    await consoleUI.getByText('本地说明列表，无服务请求。').waitFor();
-    await resetAll();
-  });
+  await check(
+    'cleaning selection stops old timer and reset remains stable',
+    async () => {
+      await go('/device-cleaning');
+      await choose('cleaning.interrupt');
+      await result.getByRole('button', { name: '重新检查并开始' }).click();
+      await result.waitFor({ state: 'hidden' });
+      await page.waitForTimeout(300);
+      await choose('cleaning.timeout');
+      await page.waitForTimeout(7400);
+      assert.equal(
+        await phone.getByText('清洁完成', { exact: true }).count(),
+        0,
+      );
+      await consoleUI.getByRole('button', { name: '重置当前环节' }).click();
+      await phone.getByRole('button', { name: /除垢/ }).first().waitFor();
+    },
+  );
+  await reset();
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
   await check(
-    'mobile floating entry, drawer and hidden armed scenario',
+    'mobile drawer hidden selection stays visible; reload starts normal and storage is isolated',
     async () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.reload();
-      await page.waitForTimeout(1500);
+      await phone.getByText('FD04', { exact: true }).waitFor();
       assert.equal(await consoleUI.isVisible(), false);
-      await page.getByRole('button', { name: '打开或收起交互说明' }).click();
-      await page
-        .getByRole('complementary', { name: '交互说明', exact: true })
-        .getByRole('heading', { name: '交互说明' })
-        .waitFor();
-      await page.getByRole('button', { name: '打开或收起交互说明' }).click();
-      await page.waitForTimeout(350);
-      await consoleOpen();
-      await select('devices.empty');
+      await choose('devices.empty');
       await page.screenshot({ path: 'test-results/mobile-drawer.png' });
       await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
-      await phone.getByRole('button', { name: '重新加载设备' }).click();
-      await failVisible('没有可用设备');
-      await consoleUI.getByRole('button', { name: '隐藏控制台' }).click();
-      assert.equal(await phone.getByRole('dialog').count(), 0);
+      await phone.getByText('还没有可用设备', { exact: true }).waitFor();
       await page.screenshot({ path: 'test-results/mobile-error.png' });
-      await consoleOpen();
-      await dialog.getByRole('button', { name: '重新查找' }).click();
-      await dialog.waitFor({ state: 'hidden' });
+      await page.evaluate(() =>
+        localStorage.setItem('formula_profile', 'original-sentinel'),
+      );
+      await page.reload();
+      await phone.getByText('FD04', { exact: true }).waitFor();
+      assert.equal(await result.count(), 0);
+      await reset();
+      assert.equal(
+        await page.evaluate(() => localStorage.getItem('formula_profile')),
+        'original-sentinel',
+      );
     },
   );
   assert.deepEqual(errors, []);
@@ -634,7 +421,7 @@ try {
 } catch (e) {
   await page.screenshot({ path: 'test-results/failure.png', fullPage: true });
   console.log('ERRORS', errors);
-  console.log((await page.locator('body').innerText()).slice(-6500));
+  console.log((await page.locator('body').innerText()).slice(-5000));
   throw e;
 } finally {
   await browser.close();
