@@ -1,7 +1,7 @@
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { formulaEditReturnTarget } from '@/demo/formula-edit-navigation.js';
 import { useLocation } from 'react-router-dom';
-import { useOperation } from '@/demo/react';
+import { useOperation, PageOperationState } from '@/demo/react';
 import { demoLocal } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useEffect, useState } from 'react';
@@ -187,6 +187,8 @@ const FormulaEdit: React.FC = () => {
   return (
     <IPhoneFrame background="radial-gradient(ellipse 140% 58% at 50% 0%, #FDE397 0%, #FDE397 30%, transparent 70%), #F7F7F7">
       <div className="flex h-full flex-col">
+      <PageOperationState operations={['formula.save']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

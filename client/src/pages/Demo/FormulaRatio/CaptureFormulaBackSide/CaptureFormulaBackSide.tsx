@@ -1,3 +1,4 @@
+import { useOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -19,6 +20,8 @@ const CaptureFormulaBackSide: React.FC = () => {
     searchParams.get('source') === 'first-use' ? '?source=first-use' : '';
   const { t } = useTranslation();
 
+  const openCamera = useOperation({ operation: 'camera.open', stage: 'capture', label: '打开相机', delay: 350, success: () => navigate('/capture-formula-step2' + firstUseSuffix), edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')) });
+
   return (
     <IPhoneFrame background="hsl(45, 60%, 92%)">
       <div
@@ -28,6 +31,7 @@ const CaptureFormulaBackSide: React.FC = () => {
             'linear-gradient(180deg, hsl(45, 60%, 92%) 0%, hsl(39, 50%, 97%) 50%, #fff 100%)',
         }}
       >
+      <PageOperationState operations={['camera.open']} />
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -89,7 +93,7 @@ const CaptureFormulaBackSide: React.FC = () => {
           {/* Start Capturing Button */}
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/capture-formula-step2' + firstUseSuffix)}
+            onClick={openCamera}
             className="flex h-[56px] w-full items-center justify-center rounded-full text-[17px] font-semibold text-white"
             style={{ backgroundColor: 'hsl(24, 67%, 32%)' }}
           >

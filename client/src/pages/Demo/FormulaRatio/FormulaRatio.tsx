@@ -1,3 +1,5 @@
+import { useLoadOperation, useOperation, PageOperationState } from '@/demo/react';
+import { demoEngine } from '@/demo/engine';
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
 import { useLocation } from 'react-router-dom';
@@ -23,6 +25,8 @@ const FormulaRatio: React.FC = () => {
   const editorLocation = useLocation();
   const { t } = useTranslation();
   const { unit } = useVolumeUnit();
+  const { loaded, reload } = useLoadOperation('formula.load', 'formula');
+  const pendingId = React.useRef<string>('');
   const [profiles] = useState(readFormulaProfiles);
   const [selectedId, setSelectedId] = useState(readSelectedFormulaId);
   const orderedProfiles = [
@@ -34,12 +38,13 @@ const FormulaRatio: React.FC = () => {
     navigate('/device');
   };
 
+  const selectProfile = useOperation({
+    operation: 'formula.select', stage: 'formula', label: '切换配比',
+    success: () => { const profile = profiles.find(item => item.id === pendingId.current); if (profile) { setSelectedId(profile.id); setActiveFormulaProfile(profile); } },
+  }, () => { pendingId.current ||= profiles.find(item => item.id !== selectedId)?.id ?? profiles[0]?.id ?? ''; });
   const handleSelect = (id: string) => {
-    const profile = profiles.find((item) => item.id === id);
-    if (!profile) return;
-
-    setSelectedId(id);
-    setActiveFormulaProfile(profile);
+    if (demoEngine.getSnapshot().active?.status === 'loading') return;
+    pendingId.current = id; selectProfile();
   };
 
   return (
@@ -70,8 +75,10 @@ const FormulaRatio: React.FC = () => {
           </motion.button>
         </div>
 
+        <button className="mock-list-reload" onClick={reload}>重新加载配比</button>
+        <PageOperationState operations={['formula.load', 'formula.select']} emptyText="暂无配比，请扫描或手动添加" />
         <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-6 pt-4">
-          {orderedProfiles.map((profile) => {
+          {loaded && orderedProfiles.map((profile) => {
             const isSelected = selectedId === profile.id;
             return (
               <motion.div

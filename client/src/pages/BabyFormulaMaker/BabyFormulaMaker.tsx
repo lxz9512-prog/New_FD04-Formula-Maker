@@ -1,5 +1,5 @@
 import { demoEngine } from '@/demo/engine';
-import { useOperation } from '@/demo/react';
+import { useDemo, useOperation, PageOperationState } from '@/demo/react';
 import { demoLocal, demoSession } from '@/demo/storage';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -172,6 +172,13 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
   waterLowDismissable,
   powderErrorDismissable,
 }) => {
+  const { active: demoActive } = useDemo();
+  const fault = demoActive?.request.operation === 'preparation.start' && demoActive.status === 'error'
+    ? demoActive.scene?.presentation : undefined;
+  waterLow = waterLow || fault === 'water';
+  powderError = powderError || fault === 'powder';
+  waterQualityError = waterQualityError || fault === 'quality';
+  powderCleanDue = powderCleanDue || fault === 'chamber';
   const [waterLowDismissed, setWaterLowDismissed] = useState(false);
   const [powderErrorDismissed, setPowderErrorDismissed] = useState(false);
   const [dismissedChamberCount, setDismissedChamberCount] =
@@ -530,7 +537,12 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
     operation: 'preparation.start', stage: 'preparation', label: mode === 'milk' ? '调奶' : '出水', delay: 4000,
     success: completePreparation, cancel: () => { setIsMaking(false); setProgress(0); },
     eligible: scene => scene.id !== 'preparation.powder' || mode === 'milk',
-  }, () => setMode('milk'));
+  }, () => {
+    setMode('milk');
+    // Preview-only prerequisites stay in component memory, not saved profiles.
+    setHasFormulaProfile(true);
+  });
+  useEffect(() => { if (demoActive?.request.operation === 'preparation.start' && demoActive.status === 'error') setIsMaking(false); }, [demoActive?.status]);
   const handleStart = () => {
     if (isResourceBlocked(resourceAlarms, mode) || formulaSetupRequired || isMaking) return;
     setIsMaking(true); setProgress(0); startOperation();
@@ -630,6 +642,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
     >
       <div className="fd06-control relative flex h-full flex-col" inert={completionOverlay ? true : undefined} aria-hidden={completionOverlay ? true : undefined} data-warning={Boolean(waterLowActive || powderErrorActive || powderCleanDue || nightWaterLow || showPowderCleanReminder || showWaterCalibrationReminder || showTubeCleanReminder)}>
         {/* Navigation Bar */}
+        <PageOperationState operations={['preparation.start']} />
         <div className="control-nav flex items-center justify-between">
           <motion.button
             whileTap={{ scale: 0.95 }}

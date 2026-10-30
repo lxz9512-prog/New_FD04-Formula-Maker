@@ -19,6 +19,8 @@ export const demoSession = isolated(window.sessionStorage);
 export function resetStageData(stage: string) {
   const keys: Record<string, string[]> = {
     devices: [],
+    settings: ['device_data'],
+    baby: ['fd04_baby_profile'],
     preparation: ['device_data', 'mixing_chamber_count'],
     capture: ['capture_draft'],
     formula: [

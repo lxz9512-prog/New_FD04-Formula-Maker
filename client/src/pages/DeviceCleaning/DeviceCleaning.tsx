@@ -1,4 +1,4 @@
-import { useOperation } from '@/demo/react';
+import { useOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './device-cleaning.css';
@@ -1195,6 +1195,7 @@ const DeviceCleaning: React.FC = () => {
       <div
         className={`flex h-full flex-col ${currentStep === 'select' ? 'tube-cleaning-page' : ''}`}
       >
+        <PageOperationState operations={['cleaning.start']} />
         <div className="fd06-page-nav">
           {(currentStep !== 'running' && !isDescalingComplete) ||
           isSterilizationRunning ? (

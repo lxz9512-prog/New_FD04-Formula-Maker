@@ -1,5 +1,5 @@
 import { demoLocal } from '@/demo/storage';
-import { useLoadOperation } from '@/demo/react';
+import { useLoadOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useMemo } from "react";
 import './feeding-stats.css';
@@ -271,7 +271,7 @@ const FeedingStats: React.FC = () => {
   };
 
   return (
-    <IPhoneFrame background="#FFFFFF"><div className="h-full flex flex-col"><button className="mock-list-reload" onClick={reload}>重新加载记录</button><div className="min-h-0 flex-1" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
+    <IPhoneFrame background="#FFFFFF"><div className="h-full flex flex-col"><button className="mock-list-reload" onClick={reload}>重新加载记录</button><PageOperationState operations={['feeding.load']} emptyText="暂无喂养记录，可添加第一条记录" /><div className="min-h-0 flex-1" style={{ visibility: loaded ? 'visible' : 'hidden' }}>
       <div className="feeding-stats-page">
         <header className="fd06-page-nav">
           <motion.button

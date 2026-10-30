@@ -37,20 +37,22 @@ async function select(
   { mode = 'next', policy = 'once', retry = 'success' } = {},
 ) {
   await consoleOpen();
-  await consoleUI
-    .getByLabel('流程环节', { exact: true })
-    .selectOption(scene.split('.')[0]);
-  await consoleUI.getByLabel('触发方式').selectOption(mode);
-  await consoleUI.getByLabel('本环节场景').selectOption(scene);
-  if (mode === 'next')
-    await consoleUI.getByLabel('触发次数').selectOption(policy);
+  const group = scene.split('.')[0];
+  if (group === 'global') await consoleUI.getByRole('button', {name: '全局环境', exact:true}).click();
+  else {
+    await consoleUI.getByRole('button', {name:'本页异常', exact:true}).click();
+    if (mode === 'preview' && !(await consoleUI.locator(`option[value="${scene}"]`).count())) {
+      const paths = {devices:'/', preparation:'/device', capture:'/capture-formula-step2', formula:'/formula-edit?mode=recognition', sync:'/formula-ratio-sync', cleaning:'/device-cleaning', feeding: scene === 'feeding.save' ? '/feeding-stats/add-record' : '/feeding-stats'};
+      const exactPaths = {'formula.load':'/formula-ratio','formula.empty':'/formula-ratio','formula.select':'/formula-ratio','settings.rename':'/device-detail','settings.light':'/device-settings','settings.notifications':'/notification-settings','settings.permission':'/notification-settings','settings.resources':'/powder-water','baby.save':'/add-baby','baby.validation':'/add-baby'};
+      await go(exactPaths[scene] || paths[group]);
+    }
+  }
+  await consoleUI.getByLabel('本页异常', {exact:true}).selectOption(scene);
+  const details = consoleUI.locator('.scene-advanced');
+  if (!(await details.getAttribute('open') !== null)) await details.locator('summary').click();
+  await consoleUI.getByLabel('触发次数').selectOption(policy);
   await consoleUI.getByLabel('重试策略').selectOption(retry);
-  await consoleUI
-    .getByRole('button', {
-      name: mode === 'preview' ? '直接预览 · 不提交数据' : '设置下一次操作场景',
-      exact: true,
-    })
-    .click();
+  await consoleUI.getByRole('button', {name: mode === 'preview' ? '立即展示' : '操作后触发', exact: true}).click();
 }
 async function resetAll() {
   await consoleOpen();
@@ -228,12 +230,7 @@ try {
         JSON.parse(await storage('formula_profile')).brand,
         'Test Brand',
       );
-      assert.ok(
-        await phone
-          .getByText(/Test Brand/)
-          .first()
-          .isVisible(),
-      );
+      await phone.getByText(/Test Brand/).first().waitFor();
     },
   );
   await check(
@@ -442,12 +439,10 @@ try {
         policy: 'persistent',
         retry: 'failure',
       });
-      await consoleUI
-        .getByLabel('流程环节', { exact: true })
-        .selectOption('formula');
+      await consoleUI.getByRole('button', {name:'本页异常', exact:true}).click();
       assert.equal(
         await consoleUI
-          .getByRole('button', { name: '设置下一次操作场景', exact: true })
+          .getByRole('button', { name: '操作后触发', exact: true })
           .isEnabled(),
         false,
       );
@@ -556,6 +551,51 @@ try {
       await resetAll();
     },
   );
+  await check('page-specific exceptions preview in place and recover without artificial dialogs', async () => {
+    for (const scene of ['preparation.quality','preparation.chamber','formula.load','formula.empty','formula.select','settings.rename','settings.light','settings.notifications','settings.permission','settings.resources','baby.save','baby.validation']) {
+      await select(scene, {mode:'preview'});
+      await dialog.waitFor();
+      const beforeUrl = page.url();
+      assert.ok(await phone.getByTestId('page-operation-state').count(), scene);
+      assert.equal(await phone.getByRole('alertdialog').count(), 0);
+      await consoleUI.getByRole('button', {name:'恢复正常',exact:true}).click();
+      assert.equal(page.url(), beforeUrl, 'preview / restore stays on exact page');
+    }
+    await go('/device-detail');
+    await select('settings.rename', {mode:'preview'});
+    const name = phone.getByLabel('设备名称', {exact:true});
+    await name.fill('My FD04');
+    await dialog.getByRole('button', {name:'返回修改输入'}).click();
+    await select('settings.rename');
+    await phone.getByRole('button', {name:'保存设备名称',exact:true}).click();
+    await failVisible('设备名称保存失败');
+    assert.equal(await name.inputValue(), 'My FD04');
+    await dialog.getByRole('button', {name:'重试',exact:true}).click();
+    await dialog.waitFor({state:'hidden'});
+    await phone.getByText('My FD04', {exact:true}).waitFor();
+    await go('/notification-settings');
+    const firstSwitch = phone.getByRole('switch').first();
+    const initial = await firstSwitch.getAttribute('aria-checked');
+    await select('settings.notifications');
+    await firstSwitch.click();
+    await failVisible('提醒设置保存失败');
+    assert.equal(await firstSwitch.getAttribute('aria-checked'), initial);
+    await dialog.getByRole('button', {name:'重试',exact:true}).click();
+    await dialog.waitFor({state:'hidden'});
+    assert.notEqual(await firstSwitch.getAttribute('aria-checked'), initial);
+    await go('/scan-formula');
+    assert.equal(await consoleUI.getByLabel('本页异常', {exact:true}).locator('option').count(), 1);
+    await select('capture.permission');
+    await phone.getByRole('button', {name:'开始拍摄',exact:true}).click();
+    await failVisible('相机权限拒绝（模拟）');
+    assert.ok(page.url().endsWith('#/scan-formula'));
+    await dialog.getByRole('button', {name:'模拟允许并重试'}).click();
+    await page.waitForURL('**/#/capture-formula');
+    await go('/faq');
+    assert.equal(await consoleUI.getByLabel('本页异常', {exact:true}).count(), 0);
+    await consoleUI.getByText('本地说明列表，无服务请求。').waitFor();
+    await resetAll();
+  });
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
   await check(
     'mobile floating entry, drawer and hidden armed scenario',

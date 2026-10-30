@@ -1,3 +1,4 @@
+import { useOperation, PageOperationState } from '@/demo/react';
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
 import { useLocation } from 'react-router-dom';
@@ -26,6 +27,8 @@ const CaptureFormulaFront: React.FC = () => {
   }`;
   const { t } = useTranslation();
 
+  const openCamera = useOperation({ operation: 'camera.open', stage: 'capture', label: '打开相机', delay: 350, success: () => navigate('/capture-formula' + firstUseSuffix), edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')) });
+
   return (
     <IPhoneFrame background="hsl(45, 60%, 92%)">
       <div
@@ -35,6 +38,7 @@ const CaptureFormulaFront: React.FC = () => {
             'linear-gradient(180deg, hsl(45, 60%, 92%) 0%, hsl(39, 50%, 97%) 50%, #fff 100%)',
         }}
       >
+      <PageOperationState operations={['camera.open']} />
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -96,7 +100,7 @@ const CaptureFormulaFront: React.FC = () => {
           {/* Start Capturing Button */}
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/capture-formula' + firstUseSuffix)}
+            onClick={openCamera}
             className="mb-4 flex h-[56px] w-full items-center justify-center rounded-full text-[17px] font-semibold text-white"
             style={{ backgroundColor: 'hsl(24, 67%, 32%)' }}
           >

@@ -1,3 +1,5 @@
+import { demoEngine } from '@/demo/engine';
+import { useOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -66,15 +68,16 @@ const DeviceDetail: React.FC = () => {
     navigate('/device-settings');
   };
 
+  const saveName = useOperation({ operation: 'device.rename', stage: 'settings', label: '保存设备名称', success: () => { setDeviceName(editName.trim()); setShowEditName(false); }, edit: () => setShowEditName(true) }, () => { setShowEditName(true); });
   const handleSaveName = () => {
     const trimmed = editName.trim();
     if (trimmed) {
-      setDeviceName(trimmed);
+      saveName();
     }
-    setShowEditName(false);
   };
 
   const handleCancelEdit = () => {
+    demoEngine.cancel();
     setEditName(deviceName);
     setShowEditName(false);
   };
@@ -173,6 +176,7 @@ const DeviceDetail: React.FC = () => {
                   </span>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
+                    aria-label="保存设备名称"
                     onClick={handleSaveName}
                     className="flex h-8 w-8 items-center justify-center rounded-full"
                     style={{ background: '#7D3C0F' }}
@@ -180,9 +184,11 @@ const DeviceDetail: React.FC = () => {
                     <Check className="h-4 w-4 text-white" />
                   </motion.button>
                 </div>
+                <PageOperationState operations={['device.rename']} />
                 <input
                   ref={inputRef}
                   type="text"
+                  aria-label="设备名称"
                   value={editName}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setEditName(e.target.value)

@@ -1,5 +1,5 @@
 import { demoLocal } from '@/demo/storage';
-import { useOperation } from '@/demo/react';
+import { useOperation, PageOperationState } from '@/demo/react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@client/src/hooks/useTranslation';
 import { motion } from 'framer-motion';
@@ -95,6 +95,7 @@ const FeedingRecordForm: React.FC<FeedingRecordFormProps> = ({ onClose }) => {
 
   return (
     <>
+      <PageOperationState operations={['feeding.save']} />
       <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-4">
         {/* Feed Type */}
         <div

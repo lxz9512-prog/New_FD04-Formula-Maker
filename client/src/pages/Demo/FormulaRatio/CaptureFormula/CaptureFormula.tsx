@@ -1,4 +1,4 @@
-import { useOperation } from '@/demo/react';
+import { useOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -32,6 +32,8 @@ const CaptureFormula: React.FC = () => {
   return (
     <IPhoneFrame background="#ffffff">
       <div className="flex h-full flex-col">
+      <PageOperationState operations={['capture.front']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

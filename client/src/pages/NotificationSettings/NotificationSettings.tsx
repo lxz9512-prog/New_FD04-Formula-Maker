@@ -1,3 +1,5 @@
+import { useOperation, PageOperationState } from '@/demo/react';
+import { demoEngine } from '@/demo/engine';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -25,13 +27,19 @@ const NotificationSettings: React.FC = () => {
     Object.fromEntries(NOTIFICATION_ITEMS.map((item) => [item.key, true]))
   );
 
+  const pending = React.useRef({ key: 'lowWater', value: false });
+  const saveToggle = useOperation({ operation: 'settings.notifications', stage: 'settings', label: '保存提醒设置', success: () => {
+    const {key, value} = pending.current; setToggles(prev => ({...prev, [key]: value}));
+  } }, () => { pending.current = {key: 'lowWater', value: !toggles.lowWater}; });
   const handleToggle = (key: string) => {
-    setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+    if (demoEngine.getSnapshot().active?.status === 'loading') return;
+    pending.current = {key, value: !toggles[key]}; saveToggle();
   };
 
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="flex h-full flex-col">
+        <PageOperationState operations={['settings.notifications']} />
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button
@@ -94,6 +102,7 @@ const NotificationSettings: React.FC = () => {
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
+                  role="switch" aria-label={t(item.labelKey)} aria-checked={toggles[item.key]}
                   onClick={() => handleToggle(item.key)}
                   className="relative h-[22px] w-[40px] rounded-full p-[2px] transition-colors duration-300"
                   style={{

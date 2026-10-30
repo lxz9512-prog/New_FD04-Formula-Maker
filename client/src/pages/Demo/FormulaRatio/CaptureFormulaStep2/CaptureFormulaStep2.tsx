@@ -1,7 +1,7 @@
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
 import { useLocation } from 'react-router-dom';
-import { useOperation } from '@/demo/react';
+import { useOperation, useDemo, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -59,6 +59,8 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
     success: () => openFormulaEditor(navigate, editorLocation, recognitionResultPath),
     edit: () => navigate('/formula-edit?mode=manual' + (firstUseSuffix ? '&source=first-use' : '')),
   });
+  const { active } = useDemo();
+  useEffect(() => { if (active?.request.operation === 'capture.analyze') setFailureMode(null); }, [active?.id]);
   const handleCapture = () => { setFailureMode(null); captureOperation(); };
 
 
@@ -167,6 +169,8 @@ const CaptureFormulaStep2: React.FC<CaptureFormulaStep2Props> = ({
   return (
     <IPhoneFrame background="#ffffff" overlay={failureOverlay}>
       <div className="relative flex h-full flex-col">
+      <PageOperationState operations={['capture.analyze']} />
+
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

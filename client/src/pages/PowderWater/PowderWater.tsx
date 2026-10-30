@@ -1,3 +1,4 @@
+import { useOperation, PageOperationState } from '@/demo/react';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -42,7 +43,7 @@ const PowderWater: React.FC = () => {
     navigate(-1);
   };
 
-  const handleSave = () => {
+  const saveData = () => {
     updateDeviceData({
       powderAmount: powder,
       waterAmount: +(waterOz / L_TO_OZ).toFixed(4),
@@ -55,9 +56,11 @@ const PowderWater: React.FC = () => {
     }, 800);
   };
 
+  const handleSave = useOperation({ operation: 'resources.save', stage: 'settings', label: '保存粉水数据', success: saveData });
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="relative flex h-full flex-col">
+        <PageOperationState operations={['resources.save']} />
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

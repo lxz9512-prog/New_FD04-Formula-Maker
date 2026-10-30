@@ -12,7 +12,8 @@ import {
   getScene,
   scenes,
   stages,
-  stageForPath,
+  pageForPath,
+  scenesForOperations,
   type Stage,
   type Operation,
 } from './catalog';
@@ -70,6 +71,11 @@ export function useOperation(request: Request, ready: () => void = () => {}) {
     activatePreview(request.operation);
     return () => {
       if (registry.get(request.operation) === entry) {
+        if (
+          demoEngine.getSnapshot().active?.request.operation ===
+          request.operation
+        )
+          demoEngine.cancel();
         registry.delete(request.operation);
         registryChanged();
       }
@@ -78,7 +84,7 @@ export function useOperation(request: Request, ready: () => void = () => {}) {
   return useCallback(() => demoEngine.run({ ...latest.current }), []);
 }
 export function useLoadOperation(
-  operation: 'devices.load' | 'feeding.load',
+  operation: 'devices.load' | 'feeding.load' | 'formula.load',
   stage: Stage,
 ) {
   const [loaded, setLoaded] = useState(false);
@@ -86,7 +92,12 @@ export function useLoadOperation(
     {
       operation,
       stage,
-      label: stage === 'devices' ? '加载设备列表' : '加载喂养记录',
+      label:
+        stage === 'devices'
+          ? '加载设备列表'
+          : stage === 'formula'
+            ? '加载配比列表'
+            : '加载喂养记录',
       success: () => setLoaded(true),
       edit:
         stage === 'feeding'
@@ -122,26 +133,7 @@ export function DemoBoundary({ children }: { children: React.ReactNode }) {
     </React.Fragment>
   );
 }
-function prepare(stage: Stage) {
-  if (
-    stage === 'preparation' &&
-    !demoLocal.getItem('formula_profile_configured')
-  ) {
-    demoLocal.setItem(
-      'formula_profile',
-      JSON.stringify({
-        brand: 'Kabrita',
-        productLine: 'Pro-Total Comfort',
-        ageRange: '12+ months',
-        powderPerScoop: 8.8,
-        waterPerScoop: 2,
-      }),
-    );
-    demoLocal.setItem('formula_profile_configured', 'true');
-    window.dispatchEvent(new Event('formulaProfileUpdated'));
-  }
-}
-export function resetDemo(stage?: Stage) {
+export function resetDemo(stage?: Stage, path?: string) {
   pendingPreview = undefined;
   demoEngine.cancel();
   if (stage) resetStageData(stage);
@@ -152,26 +144,25 @@ export function resetDemo(stage?: Stage) {
     window.dispatchEvent(new Event('interactionLinesVisibilityChange'));
   }
   demoEngine.reset(stage);
-  window.location.hash = stage ? stages[stage].path : '/';
+  window.location.hash = stage ? (path ?? stages[stage].path) : '/';
 }
 export function ScenarioConsole() {
   const snapshot = useDemo();
   const location = useLocation();
-  const navigate = useNavigate();
   useSyncExternalStore(subscribeRegistry, () => registryVersion);
-  const current = stageForPath(location.pathname);
+  const page = pageForPath(location.pathname);
+  const current = page.stage;
   const [open, setOpen] = useState(() => window.innerWidth >= 1200);
   const [collapsed, setCollapsed] = useState(false);
-  const [group, setGroup] = useState<Stage>(current);
+  const [environment, setEnvironment] = useState(false);
   const [selected, setSelected] = useState('');
-  const [mode, setMode] = useState<'next' | 'preview'>('next');
   const [policy, setPolicy] = useState<Policy>('once');
   const [retry, setRetry] = useState<Retry>('success');
   const titleRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    setGroup(current);
+    setEnvironment(false);
     setSelected('');
-  }, [current]);
+  }, [location.pathname]);
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -183,45 +174,33 @@ export function ScenarioConsole() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open]);
-  const list = scenes.filter((s) => {
-    if (s.stage !== group) return false;
-    // Keep the local step meaningful; preview may intentionally navigate to another step.
-    if (mode === 'preview' || group !== current) return true;
-    if (group === 'capture' && location.pathname === '/capture-formula')
-      return s.operations.includes('capture.front');
-    if (group === 'feeding')
-      return s.operations.includes(
-        registry.has('feeding.save') ? 'feeding.save' : 'feeding.load',
-      );
-    return true;
-  });
+  // An inline add-record sheet is a distinct business step on the same route.
+  const operations =
+    location.pathname === '/feeding-stats' && registry.has('feeding.save')
+      ? ['feeding.save' as Operation]
+      : page.operations;
+  const list = environment
+    ? scenes.filter((s) => s.stage === 'global')
+    : scenesForOperations(operations);
   const scene = list.find((s) => s.id === selected) ?? list[0];
   const globalActive = snapshot.injections.global;
-  function apply() {
-    if (!scene) return;
+  const matchedOperation =
+    scene &&
+    (scene.stage === 'global'
+      ? operations.find((op) => registry.has(op))
+      : operations.find(
+          (op) => scene.operations.includes(op) && registry.has(op),
+        ));
+  function apply(mode: 'next' | 'preview') {
+    if (!scene || (globalActive && !environment)) return;
     if (mode === 'next') {
+      pendingPreview = undefined;
       demoEngine.arm(scene.id, policy, retry);
-      return;
-    }
-    demoEngine.normal();
-    pendingPreview = scene.id;
-    previewRetry = retry;
-    prepare(scene.stage);
-    const target =
-      scene.stage === 'global'
-        ? '/'
-        : scene.id === 'feeding.save'
-          ? '/feeding-stats/add-record'
-          : stages[scene.stage].path;
-    if (`${location.pathname}${location.search}` !== target) navigate(target);
-    else {
-      demoEngine.cancel();
-      activatePreview(
-        scene.stage === 'global'
-          ? 'devices.load'
-          : (scene.operations.find((op) => registry.has(op)) ??
-              scene.operations[0]),
-      );
+    } else if (matchedOperation) {
+      demoEngine.normal();
+      pendingPreview = scene.id;
+      previewRetry = retry;
+      activatePreview(matchedOperation);
     }
   }
   const armed = Object.values(snapshot.injections).filter(Boolean);
@@ -272,122 +251,151 @@ export function ScenarioConsole() {
               <OperationStatus />
               {!collapsed && (
                 <div className="scene-settings">
-                  <p className="scene-hint">
-                    独立于产品界面 · 隐藏后场景仍生效
-                    <br />
-                    当前页面：{stages[current].name}
-                  </p>
-                  <label>
-                    流程环节
-                    <select
-                      aria-label="流程环节"
-                      value={group}
-                      onChange={(e) => {
-                        setGroup(e.target.value as Stage);
+                  <div className="scene-page-context">
+                    <small>随当前页面自动匹配</small>
+                    <h3>
+                      {page.title}
+                      {location.pathname === '/feeding-stats' &&
+                      registry.has('feeding.save')
+                        ? ' · 新增记录'
+                        : ''}
+                    </h3>
+                    <p>
+                      {operations.includes('feeding.save')
+                        ? '填写记录并点击“保存记录”'
+                        : page.action}
+                    </p>
+                  </div>
+                  <div className="scene-tabs" aria-label="场景范围">
+                    <button
+                      aria-pressed={!environment}
+                      onClick={() => {
+                        setEnvironment(false);
                         setSelected('');
                       }}
                     >
-                      {Object.entries(stages).map(([key, item]) => (
-                        <option key={key} value={key}>
-                          {item.name}
-                          {key === current ? ' · 当前' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {group !== 'global' && (
+                      本页异常
+                    </button>
                     <button
-                      className="scene-link"
+                      aria-pressed={environment}
                       onClick={() => {
-                        prepare(group);
-                        navigate(stages[group].path);
+                        setEnvironment(true);
+                        setSelected('');
                       }}
                     >
-                      准备最小演示数据并进入此环节 →
+                      全局环境
                     </button>
-                  )}
-                  <label>
-                    本环节场景
-                    <select
-                      aria-label="本环节场景"
-                      value={scene?.id ?? ''}
-                      onChange={(e) => setSelected(e.target.value)}
-                    >
-                      {list.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {scene && (
+                  </div>
+                  {list.length > 0 ? (
+                    <>
+                      <label>
+                        选择要演示的情况
+                        <select
+                          aria-label="本页异常"
+                          value={scene?.id ?? ''}
+                          onChange={(e) => setSelected(e.target.value)}
+                        >
+                          {list.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {scene && (
+                        <div className="scene-description">
+                          <strong>{scene.name}</strong>
+                          <p>页面效果：{scene.message}</p>
+                          <p>恢复路径：{scene.recovery}</p>
+                        </div>
+                      )}
+                      <div className="scene-actions">
+                        <button
+                          className="scene-primary"
+                          onClick={() => apply('preview')}
+                          disabled={
+                            !matchedOperation ||
+                            (!!globalActive && !environment)
+                          }
+                        >
+                          立即展示
+                        </button>
+                        <button
+                          className="scene-secondary"
+                          onClick={() => apply('next')}
+                          disabled={
+                            (!!globalActive && !environment) ||
+                            (!environment && !matchedOperation)
+                          }
+                        >
+                          操作后触发
+                        </button>
+                      </div>
+                      <p className="scene-hint">
+                        立即展示：留在本页，不提交数据。
+                        <br />
+                        操作后触发：设置后，在 App 内
+                        {environment ? '进行下一次支持的操作' : page.action}
+                        ，经过等待后出现异常。
+                      </p>
+                      {!matchedOperation && (
+                        <p className="scene-warning">
+                          本页没有可执行的模拟请求。全局环境可先设置，进入业务页后触发；不会把说明页伪装成请求失败。
+                        </p>
+                      )}
+                      {globalActive && !environment && (
+                        <p className="scene-warning">
+                          全局环境正在生效，请先“恢复正常”再演示本页异常。
+                        </p>
+                      )}
+                      <details className="scene-advanced">
+                        <summary>
+                          高级设置 · {policy === 'once' ? '仅一次' : '持续生效'}{' '}
+                          · {retry === 'success' ? '重试成功' : '重试继续失败'}
+                        </summary>
+                        <div className="scene-two">
+                          <label>
+                            触发次数
+                            <select
+                              aria-label="触发次数"
+                              value={policy}
+                              onChange={(e) =>
+                                setPolicy(e.target.value as Policy)
+                              }
+                            >
+                              <option value="once">仅一次</option>
+                              <option value="persistent">持续生效</option>
+                            </select>
+                          </label>
+                          <label>
+                            重试策略
+                            <select
+                              aria-label="重试策略"
+                              value={retry}
+                              onChange={(e) =>
+                                setRetry(e.target.value as Retry)
+                              }
+                            >
+                              <option value="success">重试后成功</option>
+                              <option value="failure">重试后继续失败</option>
+                            </select>
+                          </label>
+                        </div>
+                        <p className="scene-hint">
+                          次数用于“操作后触发”；立即展示不消耗业务次数，不自动提交。
+                        </p>
+                      </details>
+                    </>
+                  ) : (
                     <div className="scene-description">
-                      <strong>{scene.name}</strong>
-                      <p>前提 / 操作：{scene.prerequisite}</p>
-                      <p>恢复：{scene.recovery}</p>
+                      <strong>沿用本页原有流程</strong>
+                      <p>{page.note ?? '本页没有额外的失败操作。'}</p>
+                      <p>{page.action}</p>
                     </div>
                   )}
-                  <label>
-                    触发方式
-                    <select
-                      aria-label="触发方式"
-                      value={mode}
-                      onChange={(e) =>
-                        setMode(e.target.value as 'next' | 'preview')
-                      }
-                    >
-                      <option value="next">下一次操作触发（默认）</option>
-                      <option value="preview">直接预览当前状态</option>
-                    </select>
-                  </label>
-                  <div className="scene-two">
-                    <label>
-                      触发次数
-                      <select
-                        aria-label="触发次数"
-                        value={policy}
-                        onChange={(e) => setPolicy(e.target.value as Policy)}
-                        disabled={mode === 'preview'}
-                      >
-                        <option value="once">仅一次</option>
-                        <option value="persistent">持续生效</option>
-                      </select>
-                    </label>
-                    <label>
-                      重试策略
-                      <select
-                        aria-label="重试策略"
-                        value={retry}
-                        onChange={(e) => setRetry(e.target.value as Retry)}
-                      >
-                        <option value="success">重试后成功</option>
-                        <option value="failure">重试后继续失败</option>
-                      </select>
-                    </label>
-                  </div>
-                  {globalActive && group !== 'global' && (
-                    <p role="status" className="scene-warning">
-                      全局环境优先。请先恢复正常，再设置局部异常。
-                    </p>
+                  {page.note && list.length > 0 && !environment && (
+                    <p className="scene-hint">{page.note}</p>
                   )}
-                  <button
-                    className="scene-primary"
-                    onClick={apply}
-                    disabled={!!globalActive && group !== 'global'}
-                  >
-                    {mode === 'preview'
-                      ? '直接预览 · 不提交数据'
-                      : '设置下一次操作场景'}
-                  </button>
-                  <button
-                    className="scene-link"
-                    onClick={() => {
-                      pendingPreview = undefined;
-                      demoEngine.clearStage(group);
-                    }}
-                  >
-                    本环节：正常流程
-                  </button>
                   <section className="scene-queue" aria-live="polite">
                     <h3>待触发场景</h3>
                     {armed.length === 0 ? (
@@ -446,7 +454,11 @@ export function ScenarioConsole() {
                     >
                       恢复正常
                     </button>
-                    <button onClick={() => resetDemo(current)}>
+                    <button
+                      onClick={() =>
+                        resetDemo(current, location.pathname + location.search)
+                      }
+                    >
                       重置当前环节
                     </button>
                     <button onClick={() => resetDemo()}>重置整个 Demo</button>
@@ -552,5 +564,50 @@ export function OperationStatus() {
         返回{request.stage === 'devices' ? '设备列表' : '设备控制'}
       </button>
     </section>
+  );
+}
+
+/** Native-sized status at the business surface; diagnostic wording stays in the console. */
+export function PageOperationState({
+  operations,
+  emptyText,
+  retry,
+}: {
+  operations: Operation[];
+  emptyText?: string;
+  retry?: () => void;
+}) {
+  const { active } = useDemo();
+  if (!active || !operations.includes(active.request.operation)) return null;
+  const loading = active.status === 'loading';
+  const empty = active.status === 'empty';
+  return (
+    <div
+      className={empty ? 'mock-content-state' : 'mock-inline-state'}
+      role="status"
+      data-testid="page-operation-state"
+    >
+      <span>
+        {loading
+          ? '正在处理…'
+          : empty
+            ? (emptyText ?? '暂无数据')
+            : (active.scene?.name.replace('（模拟）', '') ??
+              '暂未完成，请重试')}
+      </span>
+      {!loading && (
+        <button
+          onClick={retry ?? demoEngine.retry}
+          style={{ marginLeft: 10, textDecoration: 'underline' }}
+        >
+          重试
+        </button>
+      )}
+      {loading && (
+        <button onClick={demoEngine.cancel} style={{ marginLeft: 10 }}>
+          取消
+        </button>
+      )}
+    </div>
   );
 }

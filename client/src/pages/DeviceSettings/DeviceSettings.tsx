@@ -1,3 +1,5 @@
+import { demoEngine } from '@/demo/engine';
+import { useOperation, PageOperationState } from '@/demo/react';
 import { demoSession } from '@/demo/storage';
 import { PageBackIcon } from '@/components/PageNavigation';
 import React, { useState } from 'react';
@@ -34,11 +36,12 @@ const SettingRow: React.FC<{ item: SettingItem; isLast: boolean }> = ({
   item,
   isLast,
 }) => {
+  const Row = item.rightNode ? motion.div : motion.button;
   return (
     <div
       className={`px-4 py-3.5 ${!isLast ? 'border-b border-[#EEEEEE]' : ''}`}
     >
-      <motion.button
+      <Row
         whileTap={item.disabled ? {} : { scale: 0.99 }}
         onClick={item.onClick}
         disabled={item.disabled}
@@ -67,7 +70,7 @@ const SettingRow: React.FC<{ item: SettingItem; isLast: boolean }> = ({
             <ChevronRight className="h-5 w-5" style={{ color: '#CCCCCC' }} />
           )}
         </div>
-      </motion.button>
+      </Row>
       {item.description && (
         <p
           className="mt-1.5 pl-[26px] text-[12px] leading-relaxed"
@@ -111,6 +114,8 @@ const DeviceSettings: React.FC = () => {
   const { t } = useTranslation();
   const [nightLightAuto, setNightLightAuto] = useState(false);
 
+  const pendingLight = React.useRef(true);
+  const saveLight = useOperation({operation: 'settings.light', stage: 'settings', label: '设置自动夜灯', success: () => setNightLightAuto(pendingLight.current)}, () => {pendingLight.current = !nightLightAuto;});
   const handleBack = () => {
     navigate('/device');
   };
@@ -144,7 +149,8 @@ const DeviceSettings: React.FC = () => {
       description: t('deviceSettings.nightLightDesc'),
       rightNode: (
         <motion.button
-          onClick={() => setNightLightAuto(!nightLightAuto)}
+          role="switch" aria-label="夜灯自动开启" aria-checked={nightLightAuto}
+          onClick={() => { if (demoEngine.getSnapshot().active?.status === 'loading') return; pendingLight.current = !nightLightAuto; saveLight(); }}
           className="relative h-[22px] w-[40px] rounded-full p-[2px] transition-colors duration-300"
           style={{
             backgroundColor: nightLightAuto ? '#8B4A1B' : '#E0E0E0',
@@ -168,6 +174,7 @@ const DeviceSettings: React.FC = () => {
   return (
     <IPhoneFrame background="#F7F7F7">
       <div className="flex h-full flex-col">
+        <PageOperationState operations={['settings.light']} />
         {/* Header */}
         <div className="fd06-page-nav">
           <motion.button

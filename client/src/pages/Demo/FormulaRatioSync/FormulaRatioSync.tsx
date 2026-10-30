@@ -1,7 +1,7 @@
 // @ts-expect-error Existing published navigation helper is a JS module.
 import { openFormulaEditor, ratioSyncScreenState } from '@/demo/formula-edit-navigation.js';
 import { useLocation } from 'react-router-dom';
-import { useOperation } from '@/demo/react';
+import { useOperation, PageOperationState } from '@/demo/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, BellRing, Check, X } from 'lucide-react';
@@ -81,7 +81,7 @@ const FormulaRatioSync: React.FC = () => {
         ? t('demo.formulaRatioSync.syncedCurrent')
         : t('demo.formulaRatioSync.syncedOther', { brand: target.brand }),
     );
-  } });
+  } }, () => { syncTarget.current = selectedId; setAlertOpen(false); setDrawerOpen(true); });
 
   const syncTo = (id: string) => { syncTarget.current = id; syncOperation(); };
 
@@ -128,6 +128,7 @@ const FormulaRatioSync: React.FC = () => {
         className="scene-sync-overlays pointer-events-none absolute overflow-hidden rounded-[46px]"
         style={{ left: 8, top: 8, width: 377, height: 836, zIndex: 40 }}
       >
+        <div className="pointer-events-auto"><PageOperationState operations={['sync.apply']} /></div>
         <AnimatePresence>
           {alertOpen && (
             <motion.div
