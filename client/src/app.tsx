@@ -1,3 +1,4 @@
+import { NativeScenarioLink } from './demo/react';
 import React from 'react';
 import { AddBabyPage, MissingBabyPrompt } from './demo/BabyProfile';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -23,18 +24,11 @@ import DeviceDetail from './pages/DeviceDetail/DeviceDetail';
 import PowderWater from './pages/PowderWater/PowderWater';
 import DeviceCleaning from './pages/DeviceCleaning/DeviceCleaning';
 import FormulaResult1 from './pages/FormulaResult1/FormulaResult1';
-import WaterLowError from './pages/WaterLowError/WaterLowError';
-import PowderError from './pages/PowderError/PowderError';
-import PowderCleanReminder from './pages/PowderCleanReminder/PowderCleanReminder';
-import PowderCleanDue from './pages/PowderCleanDue/PowderCleanDue';
-import NightWaterLow from './pages/NightWaterLow/NightWaterLow';
 import DeviceAssistant from './pages/DeviceAssistant/DeviceAssistant';
 import FAQList from './pages/FAQList/FAQList';
 import MixingChamberCleaning from './pages/FAQList/MixingChamberCleaning';
 import PowderOutputError from './pages/PowderOutputError/PowderOutputError';
 import NotificationSettings from './pages/NotificationSettings/NotificationSettings';
-import CleaningIncomplete from './pages/CleaningIncomplete/CleaningIncomplete';
-import TubeCleanReminder from './pages/TubeCleanReminder/TubeCleanReminder';
 
 const RoutesComponent = () => {
   return (
@@ -70,11 +64,11 @@ const RoutesComponent = () => {
             />
             <Route
               path="capture-formula-step2/upload-failed"
-              element={<CaptureFormulaStep2 initialFailure="upload" />}
+              element={<NativeScenarioLink />}
             />
             <Route
               path="capture-formula-step2/recognition-failed"
-              element={<CaptureFormulaStep2 initialFailure="recognition" />}
+              element={<NativeScenarioLink />}
             />
             <Route path="formula-edit" element={<FormulaEdit />} />
             <Route path="device-settings" element={<DeviceSettings />} />
@@ -83,21 +77,21 @@ const RoutesComponent = () => {
             <Route path="device-cleaning" element={<DeviceCleaning />} />
             <Route path="formula-result" element={<FormulaResult1 />} />
             <Route path="formula-result1" element={<FormulaResult1 />} />
-            <Route path="water-low-error" element={<WaterLowError />} />
-            <Route path="powder-error" element={<PowderError />} />
+            <Route path="water-low-error" element={<NativeScenarioLink />} />
+            <Route path="powder-error" element={<NativeScenarioLink />} />
             <Route
               path="water-quality-error"
-              element={<BabyFormulaMaker waterQualityError />}
+              element={<NativeScenarioLink />}
             />
             <Route
               path="powder-clean-reminder"
-              element={<PowderCleanReminder />}
+              element={<NativeScenarioLink />}
             />
-            <Route path="powder-clean-due" element={<PowderCleanDue />} />
-            <Route path="night-water-low" element={<NightWaterLow />} />
+            <Route path="powder-clean-due" element={<NativeScenarioLink />} />
+            <Route path="night-water-low" element={<NativeScenarioLink />} />
             <Route
               path="cleaning-incomplete"
-              element={<CleaningIncomplete />}
+              element={<NativeScenarioLink />}
             />
             <Route path="device-assistant" element={<DeviceAssistant />} />
             <Route path="faq" element={<FAQList />} />
@@ -121,7 +115,7 @@ const RoutesComponent = () => {
               path="water-calibration-reminder"
               element={<Navigate to="/device" replace />}
             />
-            <Route path="tube-clean-reminder" element={<TubeCleanReminder />} />
+            <Route path="tube-clean-reminder" element={<NativeScenarioLink />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

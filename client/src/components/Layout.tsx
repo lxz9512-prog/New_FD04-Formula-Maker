@@ -1,4 +1,4 @@
-import { DemoBoundary, ScenarioConsole } from '@/demo/react';
+import { DemoBoundary, ScenarioConsole, clearPageScenario } from '@/demo/react';
 import { demoLocal } from '@/demo/storage';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
@@ -16,7 +16,6 @@ import {
   Settings,
   Info,
   Droplets,
-  AlertTriangle,
   CheckCircle,
   Sun,
 } from 'lucide-react';
@@ -39,62 +38,7 @@ const isSubMenu = (item: NavItem): item is SubMenu => 'children' in item;
 
 const navItems: NavItem[] = [
   { path: '/', label: '设备列表', icon: <List className="h-4 w-4" /> },
-  {
-    label: '设备控制',
-    icon: <Home className="h-4 w-4" />,
-    children: [
-      {
-        path: '/device',
-        label: '设备控制',
-        icon: <Home className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/water-low-error',
-        label: '水量不足异常',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/powder-error',
-        label: '出粉异常',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/water-quality-error',
-        label: '水质异常',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/powder-clean-reminder',
-        label: '混合仓清洁提醒',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/powder-clean-due',
-        label: '混合仓清洁到期',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/night-water-low',
-        label: '夜间水量提示',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/cleaning-incomplete',
-        label: '管路自清洁未完成',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/tube-clean-reminder',
-        label: '管路清洁提醒',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/formula-ratio-sync',
-        label: '配比同步异常',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-    ],
-  },
+  { path: '/device', label: '设备控制', icon: <Home className="h-4 w-4" /> },
   {
     path: '/formula-result',
     label: '调奶完成',
@@ -133,16 +77,6 @@ const navItems: NavItem[] = [
         path: '/capture-formula-step2',
         label: '第二步拍摄过程',
         icon: <Camera className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/capture-formula-step2/upload-failed',
-        label: '照片上传失败',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      },
-      {
-        path: '/capture-formula-step2/recognition-failed',
-        label: '照片识别失败',
-        icon: <AlertTriangle className="h-3.5 w-3.5" />,
       },
       {
         path: '/formula-edit?mode=recognition',
@@ -516,6 +450,8 @@ const Layout = () => {
   }, []);
 
   const handlePageClick = (path: string) => {
+    // Re-selecting the same directory entry must also clear its last scenario.
+    clearPageScenario();
     navigate(path);
   };
 

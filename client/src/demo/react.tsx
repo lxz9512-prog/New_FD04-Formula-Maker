@@ -10,10 +10,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { demoEngine, type Request, type Retry } from './engine';
 import {
   getScene,
-  scenes,
   stages,
   pageForPath,
-  scenesForOperations,
+  scenesForPage,
+  nativeScenarioRoutes,
   type Stage,
   type Operation,
 } from './catalog';
@@ -36,6 +36,7 @@ const subscribeRegistry = (fn: () => void) => {
 };
 let pendingPreview: string | undefined;
 let previewRetry: Retry = 'success';
+let linkedPreview: { path: string; sceneId: string } | undefined;
 function activatePreview(operation: Operation) {
   const scene = pendingPreview ? getScene(pendingPreview) : undefined,
     entry = registry.get(operation);
@@ -120,12 +121,18 @@ export function useLoadOperation(
   // Local samples are ready immediately. Only an explicitly selected scenario replaces them.
   return { loaded: active?.request.operation !== operation };
 }
+/** Cancel page-owned simulations without resetting saved samples or replaying actions. */
+export function clearPageScenario() {
+  pendingPreview = undefined;
+  demoEngine.normal();
+}
 export function DemoBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const state = useDemo();
   useLayoutEffect(() => {
+    clearPageScenario();
     demoEngine.routeChanged();
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, location.key]);
   return (
     <React.Fragment
       key={`${location.pathname}${location.search}:${state.revision}`}
@@ -147,6 +154,18 @@ export function resetDemo(stage?: Stage, path?: string) {
   demoEngine.reset(stage);
   window.location.hash = stage ? (path ?? stages[stage].path) : '/';
 }
+export function NativeScenarioLink() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const target = nativeScenarioRoutes[location.pathname];
+  useEffect(() => {
+    if (target) {
+      linkedPreview = target;
+      navigate(target.path + location.search, { replace: true });
+    }
+  }, [target, location.search, navigate]);
+  return null;
+}
 export function ScenarioConsole() {
   const snapshot = useDemo();
   const location = useLocation();
@@ -155,14 +174,8 @@ export function ScenarioConsole() {
   const current = page.stage;
   const [open, setOpen] = useState(() => window.innerWidth >= 1200);
   const [collapsed, setCollapsed] = useState(false);
-  const [environment, setEnvironment] = useState(false);
-  const [selected, setSelected] = useState('');
   const [retry, setRetry] = useState<Retry>('success');
   const titleRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    setEnvironment(false);
-    setSelected('');
-  }, [location.pathname]);
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -179,13 +192,11 @@ export function ScenarioConsole() {
     location.pathname === '/feeding-stats' && registry.has('feeding.save')
       ? ['feeding.save' as Operation]
       : page.operations;
-  const list = environment
-    ? scenes.filter((s) => s.stage === 'global')
-    : scenesForOperations(operations);
+  const list = scenesForPage(operations);
+  const selected = snapshot.active?.scene?.id ?? '';
   const scene = list.find((s) => s.id === selected);
   const available = operations.some((op) => registry.has(op));
   function choose(id: string) {
-    setSelected(id);
     pendingPreview = undefined;
     demoEngine.normal();
     if (!id) return;
@@ -201,10 +212,18 @@ export function ScenarioConsole() {
     pendingPreview = id;
     activatePreview(operation);
   }
-  // Recovery clears the selection; selecting the same rule again can replay it.
   useEffect(() => {
-    if (!snapshot.active?.scene) setSelected('');
-  }, [snapshot.active?.scene?.id]);
+    const link = linkedPreview;
+    if (!link || link.path !== location.pathname || !available) return;
+    linkedPreview = undefined;
+    choose(link.sceneId);
+  }, [location.key, available]);
+  const operationKey = operations.join(',');
+  useEffect(() => {
+    const active = demoEngine.getSnapshot().active;
+    if (active && !operations.includes(active.request.operation))
+      clearPageScenario();
+  }, [operationKey]);
   return (
     <div
       className={`scene-console-slot ${!open ? 'is-hidden' : collapsed ? 'is-collapsed' : ''}`}
@@ -267,30 +286,12 @@ export function ScenarioConsole() {
                         : page.action}
                     </p>
                   </div>
-                  <div className="scene-tabs" aria-label="场景范围">
-                    <button
-                      aria-pressed={!environment}
-                      onClick={() => {
-                        setEnvironment(false);
-                      }}
-                    >
-                      本页异常
-                    </button>
-                    <button
-                      aria-pressed={environment}
-                      onClick={() => {
-                        setEnvironment(true);
-                      }}
-                    >
-                      全局环境
-                    </button>
-                  </div>
                   {list.length > 0 ? (
                     <>
                       <label>
                         选择要演示的情况
                         <select
-                          aria-label="本页异常"
+                          aria-label="页面异常"
                           value={
                             list.some((s) => s.id === selected) ? selected : ''
                           }
@@ -338,7 +339,7 @@ export function ScenarioConsole() {
                       <p>{page.action}</p>
                     </div>
                   )}
-                  {page.note && list.length > 0 && !environment && (
+                  {page.note && list.length > 0 && (
                     <p className="scene-hint">{page.note}</p>
                   )}
                   <section className="scene-queue" aria-live="polite">
@@ -349,7 +350,6 @@ export function ScenarioConsole() {
                   <div className="scene-resets">
                     <button
                       onClick={() => {
-                        setSelected('');
                         pendingPreview = undefined;
                         demoEngine.normal();
                       }}
@@ -417,7 +417,7 @@ export function OperationStatus() {
       >
         {loading ? '◌' : status === 'empty' ? '○' : '!'}
       </span>
-      <small>模拟{scene?.stage === 'global' ? '环境' : '交互'}</small>
+      <small>模拟场景</small>
       <h3>
         {loading
           ? (scene?.process ?? `正在${request.label}…`)

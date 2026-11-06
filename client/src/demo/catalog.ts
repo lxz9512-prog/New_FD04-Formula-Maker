@@ -256,6 +256,15 @@ export const scenes: Scene[] = [
   ),
   create(
     'sync',
+    'mismatch',
+    '设备配比不一致',
+    ['sync.apply'],
+    'validation',
+    '设备端粉水配比与 App 不一致，沿用原配比同步提醒。',
+    '选择需要同步的配比后确认，或忽略并保留当前配比。',
+  ),
+  create(
+    'sync',
     'failure',
     '配比同步失败',
     ['sync.apply'],
@@ -526,7 +535,7 @@ export const pages: Record<string, DemoPage> = {
   '/device': page(
     '调奶 / 出水控制',
     'preparation',
-    ['preparation.start'],
+    ['preparation.start', 'sync.apply'],
     '选择模式、奶量和温度，点击“开始”',
   ),
   '/formula-ratio': page(
@@ -744,3 +753,45 @@ export function scenesForOperations(operations: readonly Operation[]) {
       s.operations.some((op) => operations.includes(op)),
   );
 }
+
+/** One picker per business page; network simulations follow that page's operations too. */
+export function scenesForPage(operations: readonly Operation[]) {
+  if (!operations.length) return [];
+  return scenes.filter(
+    (scene) =>
+      scene.stage === 'global' ||
+      scene.operations.some((operation) => operations.includes(operation)),
+  );
+}
+
+/** Legacy deep links remain usable, but their scenarios belong to normal modules. */
+export const nativeScenarioRoutes: Record<
+  string,
+  { path: string; sceneId: string }
+> = {
+  '/water-low-error': { path: '/device', sceneId: 'preparation.water' },
+  '/powder-error': { path: '/device', sceneId: 'preparation.powder' },
+  '/water-quality-error': { path: '/device', sceneId: 'preparation.quality' },
+  '/powder-clean-reminder': {
+    path: '/device',
+    sceneId: 'preparation.chamber-reminder',
+  },
+  '/powder-clean-due': { path: '/device', sceneId: 'preparation.chamber' },
+  '/night-water-low': { path: '/device', sceneId: 'preparation.night-water' },
+  '/cleaning-incomplete': {
+    path: '/device',
+    sceneId: 'preparation.cleaning-incomplete',
+  },
+  '/tube-clean-reminder': {
+    path: '/device',
+    sceneId: 'preparation.tube-reminder',
+  },
+  '/capture-formula-step2/upload-failed': {
+    path: '/capture-formula-step2',
+    sceneId: 'capture.upload',
+  },
+  '/capture-formula-step2/recognition-failed': {
+    path: '/capture-formula-step2',
+    sceneId: 'capture.recognition',
+  },
+};

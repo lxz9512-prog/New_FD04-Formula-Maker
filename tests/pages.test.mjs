@@ -6,6 +6,8 @@ import {
   pageForPath,
   scenesForOperations,
   scenes,
+  scenesForPage,
+  nativeScenarioRoutes,
 } from '../client/src/demo/catalog.ts';
 test('every declared demo route has an explicit page contract', () => {
   const source = fs.readFileSync(
@@ -48,4 +50,32 @@ test('all local scenarios are reachable from at least one page contract', () => 
       scene.id,
     );
   }
+});
+
+test('one page picker includes applicable local and network cases without static-page faults', () => {
+  const ids = (path) =>
+    scenesForPage(pageForPath(path).operations).map((scene) => scene.id);
+  assert.ok(ids('/device').includes('sync.mismatch'));
+  assert.ok(ids('/device').includes('preparation.water'));
+  assert.ok(ids('/device').includes('global.offline'));
+  assert.ok(!ids('/device').includes('capture.upload'));
+  assert.ok(!ids('/formula-edit').includes('formula.load'));
+  assert.deepEqual(ids('/formula-result'), []);
+});
+test('every legacy exception belongs to an applicable normal-page picker, not the directory', () => {
+  const layout = fs.readFileSync(
+    new URL('../client/src/components/Layout.tsx', import.meta.url),
+    'utf8',
+  );
+  for (const [legacy, { path, sceneId }] of Object.entries(
+    nativeScenarioRoutes,
+  )) {
+    assert.ok(
+      scenesForPage(pageForPath(path).operations).some(
+        (scene) => scene.id === sceneId,
+      ),
+    );
+    assert.ok(!layout.includes("path: '" + legacy + "'"), legacy);
+  }
+  assert.ok(!layout.includes("path: '/formula-ratio-sync'"));
 });

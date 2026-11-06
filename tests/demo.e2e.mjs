@@ -24,13 +24,7 @@ async function open() {
 }
 async function choose(id) {
   await open();
-  await consoleUI
-    .getByRole('button', {
-      name: id.startsWith('global.') ? '全局环境' : '本页异常',
-      exact: true,
-    })
-    .click();
-  await consoleUI.getByLabel('本页异常', { exact: true }).selectOption(id);
+  await consoleUI.getByLabel('页面异常', { exact: true }).selectOption(id);
   await result.waitFor();
 }
 async function normal() {
@@ -88,6 +82,79 @@ try {
     },
   );
   await check(
+    'directory contains business pages only; every manual page change replaces its picker and clears old scenes',
+    async () => {
+      const directory = page.locator('.scene-directory');
+      assert.equal(
+        await consoleUI
+          .getByRole('button', { name: /本页异常|全局环境/ })
+          .count(),
+        0,
+      );
+      for (const name of ['设备控制', '粉水配比']) {
+        const group = directory.getByRole('button', { name, exact: true });
+        if (name === '粉水配比') await group.click();
+      }
+      assert.equal(
+        await directory
+          .getByRole('button', {
+            name: /异常|上传失败|识别失败|清洁提醒|水量提示|清洁到期|清洁未完成/,
+          })
+          .count(),
+        0,
+      );
+      await directory
+        .getByRole('button', { name: '设备控制', exact: true })
+        .click();
+      await choose('preparation.water');
+      await directory
+        .getByRole('button', { name: '设备控制', exact: true })
+        .click();
+      assert.equal(await result.count(), 0);
+      assert.equal(await consoleUI.getByLabel('页面异常').inputValue(), '');
+      await choose('sync.mismatch');
+      await phone.getByText('机器端配比已变更', { exact: true }).waitFor();
+      await phone.getByRole('button', { name: '忽略', exact: true }).click();
+      assert.equal(await result.count(), 0);
+      await choose('sync.mismatch');
+      await phone
+        .getByRole('button', { name: '选择配比同步', exact: true })
+        .click();
+      await phone.getByText('选择要同步的配比', { exact: true }).waitFor();
+      await normal();
+      await phone.getByText('选择要同步的配比', { exact: true }).waitFor({ state: 'hidden' });
+      await directory
+        .getByRole('button', { name: '第二步拍摄过程', exact: true })
+        .click();
+      assert.equal(await result.count(), 0);
+      const options = await consoleUI
+        .getByLabel('页面异常')
+        .locator('option')
+        .allTextContents();
+      assert.ok(options.includes('照片上传失败'));
+      assert.ok(options.includes('断网（模拟）'));
+      assert.ok(!options.includes('水量不足'));
+      await choose('capture.upload');
+      await directory
+        .getByRole('button', { name: '拍照识别确认', exact: true })
+        .click();
+      await choose('formula.save');
+      await directory
+        .getByRole('button', { name: '手动填写配比', exact: true })
+        .click();
+      assert.equal(await result.count(), 0);
+      await choose('global.weak');
+      await directory
+        .getByRole('button', { name: '调奶完成', exact: true })
+        .click();
+      assert.equal(await consoleUI.getByLabel('页面异常').count(), 0);
+      assert.equal(await result.count(), 0);
+      await directory
+        .getByRole('button', { name: '设备列表', exact: true })
+        .click();
+    },
+  );
+  await check(
     'left console layout and original right interaction notes remain',
     async () => {
       for (const width of [1200, 1280, 1512]) {
@@ -119,7 +186,7 @@ try {
         await phone.getByText('设备列表加载失败', { exact: true }).isVisible(),
       );
       await open();
-      await consoleUI.getByLabel('本页异常', { exact: true }).selectOption('');
+      await consoleUI.getByLabel('页面异常', { exact: true }).selectOption('');
       assert.ok(await phone.getByText('FD04', { exact: true }).isVisible());
       assert.equal(await result.count(), 0);
       await choose('devices.loading');
@@ -129,7 +196,7 @@ try {
     },
   );
   await check(
-    'all 37 rules select in place without writing data or extra product status widgets',
+    'all 38 rules select in place without writing data or extra product status widgets',
     async () => {
       const groups = [
         ['/', ['devices.loading', 'devices.empty', 'devices.failure']],
@@ -161,7 +228,10 @@ try {
           ['formula.save', 'formula.validation'],
         ],
         ['/formula-ratio', ['formula.load', 'formula.empty', 'formula.select']],
-        ['/formula-ratio-sync', ['sync.failure', 'sync.timeout']],
+        [
+          '/formula-ratio-sync',
+          ['sync.mismatch', 'sync.failure', 'sync.timeout'],
+        ],
         ['/device-cleaning', ['cleaning.interrupt', 'cleaning.timeout']],
         ['/feeding-stats', ['feeding.empty', 'feeding.load']],
         ['/feeding-stats/add-record', ['feeding.save']],
@@ -201,7 +271,7 @@ try {
           await normal();
         }
       }
-      assert.equal(count, 37);
+      assert.equal(count, 38);
     },
   );
   await check(
@@ -242,6 +312,22 @@ try {
           await page.waitForURL('**/#/device-cleaning');
         } else await normal();
       }
+    },
+  );
+  await check(
+    'legacy exception link opens normal module with selected rule; refresh is normal',
+    async () => {
+      await go('/water-low-error');
+      assert.ok(page.url().endsWith('#/device'));
+      assert.equal(
+        await consoleUI.getByLabel('页面异常').inputValue(),
+        'preparation.water',
+      );
+      await page.reload();
+      await phone
+        .getByRole('button', { name: '添加粉水配比', exact: true })
+        .waitFor();
+      assert.equal(await result.count(), 0);
     },
   );
   await check(

@@ -1,3 +1,4 @@
+import FormulaSyncControls from '@/pages/Demo/FormulaRatioSync/FormulaSyncControls';
 import { demoEngine } from '@/demo/engine';
 import { useDemo, useOperation, OperationLabel } from '@/demo/react';
 import { demoLocal, demoSession } from '@/demo/storage';
@@ -144,6 +145,7 @@ const StepperButton2: React.FC<StepperButtonProps> = ({
 );
 
 interface BabyFormulaMakerProps {
+  syncControls?: boolean;
   waterLow?: boolean;
   powderError?: boolean;
   waterQualityError?: boolean;
@@ -159,6 +161,7 @@ interface BabyFormulaMakerProps {
 }
 
 const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
+  syncControls = true,
   waterLow,
   powderError,
   waterQualityError,
@@ -1799,6 +1802,7 @@ const BabyFormulaMaker: React.FC<BabyFormulaMakerProps> = ({
           )}
         </AnimatePresence>
       </div>
+      {syncControls && <FormulaSyncControls embedded />}
     </IPhoneFrame>
   );
 };
