@@ -418,3 +418,55 @@
   padding-top: 10px;
   border-top: 1px solid #eee5db;
 }
+.scene-preview-controls {
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #eee5db;
+}
+.scene-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  gap: 12px;
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+.scene-segment {
+  display: flex;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f3eee7;
+}
+.scene-segment button {
+  min-width: 42px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  color: #a18a77;
+}
+.scene-segment button[aria-pressed='true'] {
+  background: #fffdf9;
+  color: #795238;
+  box-shadow: 0 1px 4px #744e2415;
+}
+.scene-switch {
+  width: 32px;
+  height: 19px;
+  padding: 3px;
+  border-radius: 12px;
+  background: #d9cec3;
+}
+.scene-switch[aria-checked='true'] {
+  background: #8b4a1b;
+}
+.scene-switch span {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 150ms;
+}
+.scene-switch[aria-checked='true'] span {
+  transform: translateX(13px);
+}

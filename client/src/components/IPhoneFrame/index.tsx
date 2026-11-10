@@ -1,9 +1,4 @@
-import { resetDemo } from '@/demo/react';
-import { demoLocal } from '@/demo/storage';
-import React, { type ReactNode, useState } from 'react';
-import { useTranslation } from '@client/src/hooks/useTranslation';
-import { Cable, RotateCcw } from 'lucide-react';
-import { useVolumeUnit } from '@client/src/contexts/VolumeUnitContext';
+import React, { type ReactNode } from 'react';
 
 interface IPhoneFrameProps {
   children: ReactNode;
@@ -16,111 +11,12 @@ const IPhoneFrame: React.FC<IPhoneFrameProps> = ({
   background = 'transparent',
   overlay,
 }) => {
-  const { language, setLanguage } = useTranslation();
-  const { unit, setUnit } = useVolumeUnit();
-  const [showInteractionLines, setShowInteractionLines] = useState(
-    () => demoLocal.getItem('show_interaction_lines') !== 'false',
-  );
-
-  const toggleInteractionLines = () => {
-    const nextValue = !showInteractionLines;
-    setShowInteractionLines(nextValue);
-    demoLocal.setItem('show_interaction_lines', String(nextValue));
-    window.dispatchEvent(new Event('interactionLinesVisibilityChange'));
-  };
-
   return (
     <div
       data-device-frame
       className="relative isolate mx-auto"
       style={{ width: 393, height: 852 }}
     >
-      {/* Global demo controls */}
-      <div className="absolute left-[calc(100%+2px)] top-6 z-30 w-[60px] rounded-[12px] border border-black/5 bg-white/80 p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.07)] backdrop-blur-sm">
-        <div className="grid grid-cols-2 rounded-[8px] bg-black/[0.05] p-0.5">
-          {(['zh', 'en'] as const).map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => setLanguage(lang)}
-              className="flex h-6 items-center justify-center rounded-[6px] text-[10px] font-medium transition-all duration-200"
-              style={
-                language === lang
-                  ? {
-                      background: 'white',
-                      color: '#4B403B',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
-                    }
-                  : { background: 'transparent', color: '#AAA4A1' }
-              }
-            >
-              {lang === 'zh' ? '中' : 'EN'}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-1.5 grid grid-cols-2 rounded-[8px] bg-black/[0.05] p-0.5">
-          {(['ml', 'oz'] as const).map((volumeUnit) => (
-            <button
-              key={volumeUnit}
-              type="button"
-              onClick={() => setUnit(volumeUnit)}
-              aria-label={`${volumeUnit} unit`}
-              className="flex h-6 items-center justify-center rounded-[6px] text-[9px] font-medium transition-all duration-200"
-              style={
-                unit === volumeUnit
-                  ? {
-                      background: 'white',
-                      color: '#4B403B',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
-                    }
-                  : { background: 'transparent', color: '#AAA4A1' }
-              }
-            >
-              {volumeUnit}
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          aria-label="Reset"
-          title="Reset"
-          onClick={() => {
-            resetDemo();
-          }}
-          className="mt-1.5 flex h-7 w-full items-center justify-center rounded-[8px] bg-black/[0.035] text-[#8A8380] transition-colors hover:bg-black/[0.06]"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </button>
-
-        <div className="mt-1.5 flex h-7 items-center justify-between rounded-[8px] bg-black/[0.035] px-1.5">
-          <Cable className="h-3 w-3 text-[#77706D]" />
-          <button
-            type="button"
-            role="switch"
-            aria-label={
-              language === 'zh' ? '显示连接线' : 'Show connector lines'
-            }
-            aria-checked={showInteractionLines}
-            onClick={toggleInteractionLines}
-            title={language === 'zh' ? '显示连接线' : 'Show connector lines'}
-            className="relative h-3.5 w-6 rounded-full p-[2px] transition-colors duration-200"
-            style={{
-              backgroundColor: showInteractionLines ? '#8B4A1B' : '#D4D1CF',
-            }}
-          >
-            <span
-              className="block h-2.5 w-2.5 rounded-full bg-white shadow-sm transition-transform duration-200"
-              style={{
-                transform: showInteractionLines
-                  ? 'translateX(10px)'
-                  : 'translateX(0)',
-              }}
-            />
-          </button>
-        </div>
-      </div>
       {/* Outer device frame - titanium border */}
       <div
         className="absolute inset-0 rounded-[55px]"

@@ -18,6 +18,7 @@ import {
   type Operation,
 } from './catalog';
 import { demoLocal, demoSession, resetStageData } from './storage';
+import { PreviewControls } from './PreviewControls';
 import './scenarios.css';
 export const useDemo = () =>
   useSyncExternalStore(demoEngine.subscribe, demoEngine.getSnapshot);
@@ -270,6 +271,7 @@ export function ScenarioConsole() {
             <div className="scene-console-body">
               {!collapsed && (
                 <div className="scene-settings">
+                  <PreviewControls />
                   <div className="scene-page-context">
                     <h3>
                       {page.title}

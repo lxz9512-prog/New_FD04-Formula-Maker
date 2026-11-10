@@ -82,6 +82,37 @@ try {
     },
   );
   await check(
+    'language, units and connector controls live only in console and full reset restores defaults',
+    async () => {
+      await go('/device');
+      await consoleUI.getByRole('button', { name: 'English', exact: true }).click();
+      await phone.getByText('Add formula details', { exact: true }).waitFor();
+      await consoleUI.getByRole('button', { name: '中文', exact: true }).click();
+      await phone.getByText('智能调奶器', { exact: true }).waitFor();
+      await go('/formula-edit?mode=recognition');
+      await consoleUI.getByRole('button', { name: 'ml unit', exact: true }).click();
+      await phone.getByText('59.1 ml', { exact: true }).waitFor();
+      assert.equal(await storage('demo_volume_unit'), 'ml');
+      await go('/device');
+      assert.equal(await consoleUI.getByRole('button', { name: 'ml unit' }).getAttribute('aria-pressed'), 'true');
+      const lines = consoleUI.getByRole('switch', { name: '显示连接线' });
+      await lines.click();
+      assert.equal(await lines.getAttribute('aria-checked'), 'false');
+      assert.equal(await page.locator('svg.fixed').count(), 0);
+      await lines.click();
+      await page.locator('svg.fixed').waitFor({ state: 'attached' });
+      assert.equal(await page.locator('[data-device-frame]').getByRole('button', { name: /ml unit|oz unit|Reset|English|中文/ }).count(), 0);
+      assert.equal(await page.getByRole('button', { name: 'Reset', exact: true }).count(), 0);
+      await lines.click();
+      await consoleUI.getByRole('button', { name: 'English', exact: true }).click();
+      await reset();
+      assert.equal(await consoleUI.getByRole('button', { name: '中文' }).getAttribute('aria-pressed'), 'true');
+      assert.equal(await consoleUI.getByRole('button', { name: 'oz unit' }).getAttribute('aria-pressed'), 'true');
+      assert.equal(await lines.getAttribute('aria-checked'), 'true');
+      await phone.getByText('FD04', { exact: true }).waitFor();
+    },
+  );
+  await check(
     'directory contains business pages only; every manual page change replaces its picker and clears old scenes',
     async () => {
       const directory = page.locator('.scene-directory');
@@ -162,7 +193,7 @@ try {
       assert.equal(await details.getAttribute('open'), null);
       assert.equal(await explanation.isVisible(), false);
       assert.equal(await consoleUI.locator('.scene-queue, .scene-description').count(), 0);
-      assert.ok((await consoleUI.boundingBox()).height < 500);
+      assert.ok((await consoleUI.boundingBox()).height < 650);
       await choose('devices.failure');
       assert.equal(await explanation.isVisible(), false);
       assert.ok(await result.getByRole('button', { name: '重试', exact: true }).isVisible());
