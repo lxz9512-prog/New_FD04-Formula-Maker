@@ -331,16 +331,6 @@ export const scenes: Scene[] = [
   ),
   create(
     'preparation',
-    'quality',
-    '水质异常',
-    ['preparation.start'],
-    'validation',
-    '水质检查未通过，本次未出水、未保存记录。',
-    '模拟换水后重试，或按原提示处理。',
-    { presentation: 'quality', retryLabel: '已换水，重新开始' },
-  ),
-  create(
-    'preparation',
     'chamber',
     '混合仓清洁到期',
     ['preparation.start'],
@@ -720,7 +710,6 @@ export const pages: Record<string, DemoPage> = {
 for (const [path, title] of Object.entries({
   '/water-low-error': '水量不足',
   '/powder-error': '出粉异常',
-  '/water-quality-error': '水质异常',
   '/powder-clean-reminder': '混合仓清洁提醒',
   '/powder-clean-due': '混合仓清洁到期',
   '/night-water-low': '夜间缺水',
@@ -734,6 +723,14 @@ for (const [path, title] of Object.entries({
     '先按原页面提示补水、排查或清洁，再重新开始',
     '保留原生异常与退出路径；控制台不覆盖当前页面自带的前置条件。',
   );
+// Retired scenario: old bookmarks now open the normal device page.
+pages['/water-quality-error'] = page(
+  '设备控制（旧链接）',
+  'preparation',
+  [],
+  '返回设备控制',
+  '水质异常演示已隐藏。',
+);
 export function pageForPath(path: string): DemoPage {
   return (
     pages[path] ??
@@ -771,7 +768,6 @@ export const nativeScenarioRoutes: Record<
 > = {
   '/water-low-error': { path: '/device', sceneId: 'preparation.water' },
   '/powder-error': { path: '/device', sceneId: 'preparation.powder' },
-  '/water-quality-error': { path: '/device', sceneId: 'preparation.quality' },
   '/powder-clean-reminder': {
     path: '/device',
     sceneId: 'preparation.chamber-reminder',

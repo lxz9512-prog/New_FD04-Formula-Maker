@@ -81,7 +81,7 @@ const RoutesComponent = () => {
             <Route path="powder-error" element={<NativeScenarioLink />} />
             <Route
               path="water-quality-error"
-              element={<NativeScenarioLink />}
+              element={<Navigate to="/device" replace />}
             />
             <Route
               path="powder-clean-reminder"

@@ -79,3 +79,22 @@ test('every legacy exception belongs to an applicable normal-page picker, not th
   }
   assert.ok(!layout.includes("path: '/formula-ratio-sync'"));
 });
+
+test('water quality exception is retired from the console, directory and legacy injection', () => {
+  assert.ok(!scenes.some((scene) => scene.id === 'preparation.quality'));
+  assert.ok(!nativeScenarioRoutes['/water-quality-error']);
+  const layout = fs.readFileSync(
+    new URL('../client/src/components/Layout.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.ok(!layout.includes('/water-quality-error'));
+  assert.ok(!layout.includes('水质异常'));
+  const app = fs.readFileSync(
+    new URL('../client/src/app.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    app,
+    /path="water-quality-error"\s+element=\{<Navigate to="\/device" replace \/>\}/,
+  );
+});

@@ -257,7 +257,7 @@ try {
     },
   );
   await check(
-    'all 38 rules select in place without writing data or extra product status widgets',
+    'all 37 rules select in place without writing data or extra product status widgets',
     async () => {
       const groups = [
         ['/', ['devices.loading', 'devices.empty', 'devices.failure']],
@@ -267,7 +267,6 @@ try {
             'preparation.water',
             'preparation.powder',
             'preparation.timeout',
-            'preparation.quality',
             'preparation.chamber',
             'preparation.chamber-reminder',
             'preparation.night-water',
@@ -332,17 +331,23 @@ try {
           await normal();
         }
       }
-      assert.equal(count, 38);
+      assert.equal(count, 37);
     },
   );
   await check(
-    'eight original device exception designs are projected onto normal control page',
+    'seven original device exception designs are projected onto normal control page',
     async () => {
       await go('/device');
+      assert.equal(await consoleUI.locator('option[value="preparation.quality"]').count(), 0);
+      assert.equal(await page.locator('nav').getByText('水质异常', { exact: true }).count(), 0);
+      await go('/water-quality-error');
+      await page.waitForURL('**/#/device');
+      assert.equal(await consoleUI.getByLabel('页面异常').inputValue(), '');
+      assert.equal(await result.count(), 0);
+      assert.equal(await phone.locator('.control-alert-overlay').count(), 0);
       const originalPaths = {
         water: '/water-low-error',
         powder: '/powder-error',
-        quality: '/water-quality-error',
         chamber: '/powder-clean-due',
         'chamber-reminder': '/powder-clean-reminder',
         'night-water': '/night-water-low',
