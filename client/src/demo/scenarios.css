@@ -13,7 +13,7 @@
 .scene-console {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  max-height: 100%;
   overflow: hidden;
   background: #fffdf9;
   border: 1px solid #e9dfd3;
@@ -91,82 +91,11 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
-.scene-hint {
-  font-size: 10px;
-  color: #a08e7f;
-  margin: 0 0 10px;
-}
-.scene-two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.scene-two label,
-.scene-two select {
-  font-size: 11px;
-}
-.scene-description {
-  padding: 10px 11px;
-  border-radius: 12px;
-  background: #f8f2e9;
-  font-size: 10px;
-  color: #927c69;
-}
-.scene-description strong {
-  color: #72543d;
-  font-size: 12px;
-  font-weight: 500;
-}
-.scene-description p {
-  margin: 6px 0 0;
-}
-.scene-primary {
-  width: 100%;
-  padding: 11px 6px;
-  background: #8b4a1b;
-  color: #fffaf3;
-  border-radius: 24px;
-  font-weight: 500;
-  margin: 5px 0;
-}
-.scene-link {
-  font-size: 10px;
-  color: #a17148;
-  text-align: left;
-  margin: 2px 0 8px;
-}
-.scene-queue {
-  background: #faf6f0;
-  border: 1px solid #eee4d7;
-  border-radius: 12px;
-  padding: 10px 11px;
-  margin-top: 9px;
-  font-size: 10px;
-  color: #927a65;
-}
-.scene-queue h3 {
-  color: #8b4a1b;
-  font-size: 11px;
-  font-weight: 500;
-  margin: 0 0 6px;
-}
-.scene-queue p {
-  margin: 5px 0;
-}
-.scene-queue b {
-  font-weight: 500;
-}
-.scene-queue .scene-last {
-  border-top: 1px solid #ecdfd0;
-  padding-top: 7px;
-  margin-top: 7px;
-  color: #a28d79;
-}
 .scene-resets {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin: 14px 0 10px;
+  margin: 16px 0;
 }
 .scene-resets button {
   border: 1px solid #e3d6c6;
@@ -174,10 +103,6 @@
   padding: 6px;
   font-size: 10px;
   color: #8d715a;
-}
-.scene-warning {
-  color: #a07749;
-  font-size: 11px;
 }
 .scene-backdrop {
   display: none;
@@ -194,7 +119,7 @@
 /* A compact status block, not a dialog: no focus stealing, scrim or phone overlay. */
 .scene-operation {
   padding: 12px;
-  margin-bottom: 16px;
+  margin: 14px 0 0;
   background: #f7efe3;
   border: 1px solid #e7d7c2;
   border-radius: 14px;
@@ -210,29 +135,23 @@
 .scene-operation-label span {
   color: #97704b;
 }
-.scene-operation-symbol {
-  display: none;
-}
-.scene-operation small {
-  font-size: 9px;
-  color: #ae967f;
-  letter-spacing: 0;
-}
 .scene-operation h3 {
-  font-size: 13px;
-  font-weight: 550;
-  margin: 3px 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
   color: #81502c;
 }
-.scene-operation p {
-  font-size: 10px;
-  line-height: 1.7;
-  margin: 6px 0;
-  color: #9a8068;
+.scene-operation-label {
+  align-items: center;
+  gap: 8px;
 }
-.scene-operation .scene-recovery {
-  border-top: 1px solid #e8dbcb;
-  padding-top: 6px;
+.scene-operation-label span {
+  flex-shrink: 0;
+}
+.scene-operation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 .scene-operation button {
   font-size: 10px;
@@ -246,10 +165,6 @@
 .scene-operation button.scene-retry {
   background: #ead9c3;
   border-color: #ddc6a8;
-}
-.scene-operation button.scene-back {
-  border-color: transparent;
-  padding-left: 0;
 }
 .scene-operation progress {
   width: 100%;
@@ -343,7 +258,7 @@
     position: fixed;
     left: 12px;
     top: 12px;
-    bottom: 12px;
+    max-height: calc(100dvh - 24px);
     width: min(340px, calc(100vw - 24px));
     height: auto;
     z-index: 151;
@@ -470,9 +385,36 @@
   margin: 3px 0;
   font-weight: 600;
 }
-.scene-page-context p {
+.scene-empty {
   color: #a18a77;
-  font-size: 10px;
-  margin: 4px 0;
+  font-size: 11px;
 }
-/* Quiet native content state, not an injected dialog, toast or demo announcement. */
+.scene-details {
+  border-top: 1px solid #eee5db;
+  padding-top: 12px;
+  font-size: 11px;
+  color: #a18a77;
+}
+.scene-details summary {
+  cursor: pointer;
+  width: fit-content;
+  color: #93765f;
+}
+.scene-details summary:focus-visible {
+  outline: 2px solid #b6865c;
+  outline-offset: 3px;
+}
+.scene-details-content p {
+  margin: 10px 0 0;
+  line-height: 1.7;
+}
+.scene-details-content strong {
+  display: block;
+  color: #795238;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.scene-details-content .scene-last {
+  padding-top: 10px;
+  border-top: 1px solid #eee5db;
+}

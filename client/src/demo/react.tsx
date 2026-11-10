@@ -251,7 +251,7 @@ export function ScenarioConsole() {
           >
             <header>
               <div>
-                <small>DEMO · 演示设置</small>
+                <small>DEMO</small>
                 <h2>场景控制台</h2>
               </div>
               <div className="scene-header-actions">
@@ -268,11 +268,9 @@ export function ScenarioConsole() {
               </div>
             </header>
             <div className="scene-console-body">
-              <OperationStatus />
               {!collapsed && (
                 <div className="scene-settings">
                   <div className="scene-page-context">
-                    <small>随当前页面自动匹配</small>
                     <h3>
                       {page.title}
                       {location.pathname === '/feeding-stats' &&
@@ -280,16 +278,11 @@ export function ScenarioConsole() {
                         ? ' · 新增记录'
                         : ''}
                     </h3>
-                    <p>
-                      {operations.includes('feeding.save')
-                        ? '填写记录并点击“保存记录”'
-                        : page.action}
-                    </p>
                   </div>
                   {list.length > 0 ? (
                     <>
                       <label>
-                        选择要演示的情况
+                        演示场景
                         <select
                           aria-label="页面异常"
                           value={
@@ -306,18 +299,8 @@ export function ScenarioConsole() {
                           ))}
                         </select>
                       </label>
-                      {scene && (
-                        <div className="scene-description">
-                          <strong>{scene.name}</strong>
-                          <p>页面效果：{scene.message}</p>
-                          <p>恢复路径：{scene.recovery}</p>
-                        </div>
-                      )}
-                      <p className="scene-hint">
-                        选择即展示，不提交业务数据。沿用原有异常界面与操作入口；模拟说明及恢复控制仅放在此处。
-                      </p>
                       <label>
-                        恢复操作结果
+                        重试结果
                         <select
                           aria-label="重试策略"
                           value={retry}
@@ -333,20 +316,9 @@ export function ScenarioConsole() {
                       </label>
                     </>
                   ) : (
-                    <div className="scene-description">
-                      <strong>沿用本页原有流程</strong>
-                      <p>{page.note ?? '本页没有额外的失败操作。'}</p>
-                      <p>{page.action}</p>
-                    </div>
+                    <p className="scene-empty">本页无需设置异常</p>
                   )}
-                  {page.note && list.length > 0 && (
-                    <p className="scene-hint">{page.note}</p>
-                  )}
-                  <section className="scene-queue" aria-live="polite">
-                    <h3>当前场景</h3>
-                    <p>{snapshot.active?.scene?.name ?? '正常状态'}</p>
-                    <p className="scene-last">{snapshot.lastEvent}</p>
-                  </section>
+                  <OperationStatus />
                   <div className="scene-resets">
                     <button
                       onClick={() => {
@@ -365,9 +337,40 @@ export function ScenarioConsole() {
                     </button>
                     <button onClick={() => resetDemo()}>重置整个 Demo</button>
                   </div>
-                  <p className="scene-hint">
-                    恢复正常仅移除注入并停止等待，不重放操作。重置会清除对应模拟数据。所有权限、网络和设备故障均为模拟；刷新默认无异常注入。
-                  </p>
+                  <details
+                    className="scene-details"
+                    key={`${location.pathname}${location.search}`}
+                  >
+                    <summary>演示说明</summary>
+                    <div className="scene-details-content">
+                      {scene && (
+                        <>
+                          <p>
+                            <strong>页面效果</strong>
+                            {scene.message}
+                          </p>
+                          <p>
+                            <strong>恢复方式</strong>
+                            {scene.recovery}
+                          </p>
+                        </>
+                      )}
+                      <p>
+                        <strong>页面操作</strong>
+                        {operations.includes('feeding.save')
+                          ? '填写记录并点击“保存记录”'
+                          : page.action}
+                      </p>
+                      {page.note && <p>{page.note}</p>}
+                      <p>
+                        选择场景立即展示，不会自动保存数据。权限、网络和设备异常均为模拟。
+                      </p>
+                      <p>
+                        恢复正常只清除异常，不重放操作；重置会清除对应演示数据。刷新后默认正常。
+                      </p>
+                      <p className="scene-last">{snapshot.lastEvent}</p>
+                    </div>
+                  </details>
                 </div>
               )}
             </div>
@@ -406,62 +409,29 @@ export function OperationStatus() {
       aria-live="polite"
     >
       <div className="scene-operation-label">
-        当前运行结果
+        <h3>{loading ? scene.process : scene.name}</h3>
         <span>
-          {loading ? '处理中' : status === 'empty' ? '空数据' : '未完成'}
+          {loading ? '等待中' : status === 'empty' ? '空数据' : '已展示'}
         </span>
       </div>
-      <span
-        className={`scene-operation-symbol ${loading ? 'is-loading' : ''}`}
-        aria-hidden="true"
-      >
-        {loading ? '◌' : status === 'empty' ? '○' : '!'}
-      </span>
-      <small>模拟场景</small>
-      <h3>
-        {loading
-          ? (scene?.process ?? `正在${request.label}…`)
-          : (scene?.name ?? '操作未完成')}
-      </h3>
-      {loading ? (
-        <>
-          <progress
-            aria-label="模拟操作进度"
-            max={100}
-            value={active.progress}
-          />
-          <p>
-            {active.preview ? '选择场景不会自动提交。' : ''}正在等待模拟
-            {request.stage === 'preparation' || request.stage === 'cleaning'
-              ? '设备'
-              : '服务'}
-            响应，尚未提交结果。
-          </p>
-        </>
-      ) : (
-        <>
-          <p>{scene?.message}</p>
-          <p className="scene-recovery">{scene?.recovery}</p>
-          <button className="scene-retry" onClick={demoEngine.retry}>
-            {scene?.retryLabel ?? '重试'}
-          </button>
-          {scene?.editLabel && (
-            <button onClick={edit}>{scene.editLabel}</button>
-          )}
-        </>
+      {loading && (
+        <progress aria-label="模拟操作进度" max={100} value={active.progress} />
       )}
-      <button onClick={demoEngine.cancel}>
-        {loading ? '取消等待' : '取消，返回当前页面'}
-      </button>
-      <button
-        className="scene-back"
-        onClick={() => {
-          demoEngine.cancel();
-          navigate(request.stage === 'devices' ? '/' : '/device');
-        }}
-      >
-        返回{request.stage === 'devices' ? '设备列表' : '设备控制'}
-      </button>
+      <div className="scene-operation-actions">
+        {!loading && (
+          <>
+            <button className="scene-retry" onClick={demoEngine.retry}>
+              {scene.retryLabel ?? '重试'}
+            </button>
+            {scene.editLabel && (
+              <button onClick={edit}>{scene.editLabel}</button>
+            )}
+          </>
+        )}
+        <button onClick={demoEngine.cancel}>
+          {loading ? '取消等待' : '取消'}
+        </button>
+      </div>
     </section>
   );
 }

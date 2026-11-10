@@ -155,6 +155,36 @@ try {
     },
   );
   await check(
+    'compact console keeps controls visible and explanations folded until requested',
+    async () => {
+      const details = consoleUI.locator('.scene-details');
+      const explanation = details.locator('.scene-details-content');
+      assert.equal(await details.getAttribute('open'), null);
+      assert.equal(await explanation.isVisible(), false);
+      assert.equal(await consoleUI.locator('.scene-queue, .scene-description').count(), 0);
+      assert.ok((await consoleUI.boundingBox()).height < 500);
+      await choose('devices.failure');
+      assert.equal(await explanation.isVisible(), false);
+      assert.ok(await result.getByRole('button', { name: '重试', exact: true }).isVisible());
+      await details.locator('summary').click();
+      assert.ok(await explanation.getByText('页面效果', { exact: true }).isVisible());
+      await details.locator('summary').click();
+      await result.getByRole('button', { name: '取消', exact: true }).click();
+      assert.equal(await result.count(), 0);
+      await choose('devices.loading');
+      assert.ok(await result.getByRole('button', { name: '取消等待' }).isVisible());
+      await normal();
+      await details.locator('summary').click();
+      await go('/device');
+      assert.equal(await details.getAttribute('open'), null);
+      await go('/');
+      await consoleUI.getByRole('button', { name: '收起控制台' }).click();
+      assert.equal(await consoleUI.getByLabel('页面异常').count(), 0);
+      await consoleUI.getByRole('button', { name: '展开控制台' }).click();
+      assert.ok(await consoleUI.getByLabel('页面异常').isVisible());
+    },
+  );
+  await check(
     'left console layout and original right interaction notes remain',
     async () => {
       for (const width of [1200, 1280, 1512]) {
